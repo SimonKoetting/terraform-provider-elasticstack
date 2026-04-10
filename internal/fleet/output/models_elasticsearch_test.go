@@ -28,6 +28,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenUnset(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		OutputID: types.StringValue("elasticsearch-output-id"),
+		Name:     types.StringValue("elasticsearch-output"),
+		Type:     types.StringValue("elasticsearch"),
+		Hosts:    types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://elasticsearch:9200")}),
+		Preset:   types.StringNull(),
+	}
+
+	union, diags := model.toAPICreateElasticsearchModel(context.Background())
+	require.False(t, diags.HasError())
+
+	body, err := union.AsNewOutputElasticsearch()
+	require.NoError(t, err)
+	assert.Nil(t, body.Preset)
+}
+
 func TestOutputModelToAPICreateElasticsearchModelIncludesPreset(t *testing.T) {
 	t.Parallel()
 

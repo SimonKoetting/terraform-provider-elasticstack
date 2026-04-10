@@ -42,8 +42,8 @@ import (
 
 var minVersionOutput = version.Must(version.NewVersion("8.6.0"))
 
-//go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/create/output.tf
-var sdkCreateTestConfig string
+//go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/legacy-create/output.tf
+var sdkLegacyCreateTestConfig string
 
 func TestAccResourceOutputElasticsearchFromSDK(t *testing.T) {
 	policyName := sdkacctest.RandString(22)
@@ -60,7 +60,7 @@ func TestAccResourceOutputElasticsearchFromSDK(t *testing.T) {
 					},
 				},
 				SkipFunc: versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
-				Config:   sdkCreateTestConfig,
+				Config:   sdkLegacyCreateTestConfig,
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(policyName),
 				},
