@@ -35,6 +35,7 @@ type outputModel struct {
 	Type                        types.String `tfsdk:"type"`
 	Hosts                       types.List   `tfsdk:"hosts"` // > string
 	ServiceToken                types.String `tfsdk:"service_token"`
+	Preset                      types.String `tfsdk:"preset"`
 	CaSha256                    types.String `tfsdk:"ca_sha256"`
 	CaTrustedFingerprint        types.String `tfsdk:"ca_trusted_fingerprint"`
 	DefaultIntegrations         types.Bool   `tfsdk:"default_integrations"`

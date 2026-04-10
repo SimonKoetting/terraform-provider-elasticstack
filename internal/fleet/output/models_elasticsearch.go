@@ -36,6 +36,7 @@ func (model *outputModel) fromAPIElasticsearchModel(ctx context.Context, data *k
 	model.Hosts = typeutils.SliceToListTypeString(ctx, data.Hosts, path.Root("hosts"), &diags)
 	model.CaSha256 = types.StringPointerValue(data.CaSha256)
 	model.CaTrustedFingerprint = typeutils.NonEmptyStringishPointerValue(data.CaTrustedFingerprint)
+	model.Preset = typeutils.NonEmptyStringishPointerValue(data.Preset)
 	model.DefaultIntegrations = types.BoolPointerValue(data.IsDefault)
 	model.DefaultMonitoring = types.BoolPointerValue(data.IsDefaultMonitoring)
 	model.ConfigYaml = types.StringPointerValue(data.ConfigYaml)
@@ -73,7 +74,14 @@ func (model outputModel) toAPICreateElasticsearchModel(ctx context.Context) (kba
 		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueString(),
-		Ssl:                  ssl.toCreateElasticsearch(),
+		Preset: func() *kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset {
+			if model.Preset.IsNull() || model.Preset.IsUnknown() {
+				return nil
+			}
+			value := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset(model.Preset.ValueString())
+			return &value
+		}(),
+		Ssl: ssl.toCreateElasticsearch(),
 	}
 
 	var union kbapi.NewOutputUnion
@@ -103,7 +111,14 @@ func (model outputModel) toAPIUpdateElasticsearchModel(ctx context.Context) (kba
 		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueStringPointer(),
-		Ssl:                  ssl.toUpdateElasticsearch(),
+		Preset: func() *kbapi.UpdateOutputElasticsearchPreset {
+			if model.Preset.IsNull() || model.Preset.IsUnknown() {
+				return nil
+			}
+			value := kbapi.UpdateOutputElasticsearchPreset(model.Preset.ValueString())
+			return &value
+		}(),
+		Ssl: ssl.toUpdateElasticsearch(),
 	}
 
 	var union kbapi.UpdateOutputUnion

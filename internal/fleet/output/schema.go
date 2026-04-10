@@ -92,6 +92,13 @@ func getSchema() schema.Schema {
 					validators.AllowedIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
 				},
 			},
+			"preset": schema.StringAttribute{
+				Description: "Fleet output performance preset for Elasticsearch-family output types.",
+				Optional:    true,
+				Validators: []validator.String{
+					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
+				},
+			},
 			"sync_integrations": schema.BoolAttribute{
 				Description: "When type is remote_elasticsearch, whether Fleet synchronizes integration assets to the remote cluster. Subscription and version requirements apply per Elastic documentation.",
 				Optional:    true,
