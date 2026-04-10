@@ -19,5 +19,5 @@
 ## 4. Verification
 
 - [x] 4.1 Run targeted Go tests for touched Fleet output packages and fix regressions.
-- [ ] 4.2 Run `make build` to verify provider build integrity.
+- [x] 4.2 Run `make build` to verify provider build integrity (requires `make setup` or at least `make tools` and `make golangci-lint-custom` so the `acctestconfigdirlint` plugin is available to `golangci-lint-custom`).
 - [x] 4.3 Confirm OpenSpec artifact readiness with `openspec status --change fleet-output-elasticsearch-add-preset-parameter`.

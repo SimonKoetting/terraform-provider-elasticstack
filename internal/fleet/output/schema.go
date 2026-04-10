@@ -93,8 +93,9 @@ func getSchema() schema.Schema {
 				},
 			},
 			"preset": schema.StringAttribute{
-				Description: "Fleet output performance preset for Elasticsearch-family output types.",
-				Optional:    true,
+				Description: "Fleet output performance preset. Only valid when type is elasticsearch or remote_elasticsearch. " +
+					"If config_yaml is also set, Fleet applies both; use preset for supported tuning and config_yaml for additional keys.",
+				Optional: true,
 				Validators: []validator.String{
 					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
 				},

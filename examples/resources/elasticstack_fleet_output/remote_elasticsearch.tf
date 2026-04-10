@@ -7,6 +7,7 @@ resource "elasticstack_fleet_output" "remote" {
   name                 = "Remote Elasticsearch"
   output_id            = "remote-es-output"
   type                 = "remote_elasticsearch"
+  preset               = "balanced"
   service_token        = var.remote_service_token
   default_integrations = false
   default_monitoring   = false
