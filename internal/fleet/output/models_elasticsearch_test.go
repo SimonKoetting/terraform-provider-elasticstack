@@ -39,7 +39,7 @@ func TestOutputModelToAPICreateElasticsearchModelSendsBalancedPresetWhenUnset(t 
 		Preset:   types.StringNull(),
 	}
 
-	union, diags := model.toAPICreateElasticsearchModel(context.Background())
+	union, diags := model.toAPICreateElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsNewOutputElasticsearch()
@@ -60,7 +60,7 @@ func TestOutputModelToAPICreateElasticsearchModelSendsBalancedPresetWhenBlank(t 
 			Preset:   preset,
 		}
 
-		union, diags := model.toAPICreateElasticsearchModel(context.Background())
+		union, diags := model.toAPICreateElasticsearchModel(context.Background(), true)
 		require.False(t, diags.HasError())
 
 		body, err := union.AsNewOutputElasticsearch()
@@ -81,13 +81,32 @@ func TestOutputModelToAPICreateElasticsearchModelIncludesPreset(t *testing.T) {
 		Preset:   types.StringValue("throughput"),
 	}
 
-	union, diags := model.toAPICreateElasticsearchModel(context.Background())
+	union, diags := model.toAPICreateElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsNewOutputElasticsearch()
 	require.NoError(t, err)
 	require.NotNil(t, body.Preset)
 	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset("throughput"), *body.Preset)
+}
+
+func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenFleetAPIDoesNotSupportPreset(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		OutputID: types.StringValue("elasticsearch-output-id"),
+		Name:     types.StringValue("elasticsearch-output"),
+		Type:     types.StringValue("elasticsearch"),
+		Hosts:    types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://elasticsearch:9200")}),
+		Preset:   types.StringNull(),
+	}
+
+	union, diags := model.toAPICreateElasticsearchModel(context.Background(), false)
+	require.False(t, diags.HasError())
+
+	body, err := union.AsNewOutputElasticsearch()
+	require.NoError(t, err)
+	assert.Nil(t, body.Preset)
 }
 
 func TestOutputModelToAPIUpdateElasticsearchModelIncludesPreset(t *testing.T) {
@@ -100,7 +119,7 @@ func TestOutputModelToAPIUpdateElasticsearchModelIncludesPreset(t *testing.T) {
 		Preset: types.StringValue("balanced"),
 	}
 
-	union, diags := model.toAPIUpdateElasticsearchModel(context.Background())
+	union, diags := model.toAPIUpdateElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsUpdateOutputElasticsearch()
@@ -125,7 +144,7 @@ func TestOutputModelFromAPIElasticsearchModelMapsPreset(t *testing.T) {
 			value := kbapi.KibanaHTTPAPIsOutputElasticsearchPreset("latency")
 			return &value
 		}(),
-	})
+	}, true)
 	require.False(t, diags.HasError())
 
 	assert.Equal(t, "latency", model.Preset.ValueString())
@@ -143,8 +162,26 @@ func TestOutputModelFromAPIElasticsearchModelMapsNilPresetToBalanced(t *testing.
 		Name:  "elasticsearch-output",
 		Type:  kbapi.KibanaHTTPAPIsOutputElasticsearchTypeElasticsearch,
 		Hosts: []string{"https://elasticsearch:9200"},
-	})
+	}, true)
 	require.False(t, diags.HasError())
 
 	assert.Equal(t, defaultFleetOutputPreset, model.Preset.ValueString())
+}
+
+func TestOutputModelFromAPIElasticsearchModelMapsNilPresetToNullWhenFleetAPIDoesNotSupportPreset(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		SpaceIDs: types.SetNull(types.StringType),
+	}
+
+	diags := model.fromAPIElasticsearchModel(context.Background(), &kbapi.OutputElasticsearch{
+		Id:    new("output-id"),
+		Name:  "elasticsearch-output",
+		Type:  kbapi.KibanaHTTPAPIsOutputElasticsearchTypeElasticsearch,
+		Hosts: []string{"https://elasticsearch:9200"},
+	}, false)
+	require.False(t, diags.HasError())
+
+	assert.True(t, model.Preset.IsNull())
 }

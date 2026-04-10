@@ -42,12 +42,9 @@ import (
 
 var minVersionOutput = version.Must(version.NewVersion("8.6.0"))
 
-// minVersionFleetOutputPreset is the minimum Stack version where the Fleet Outputs API
-// accepts the "preset" field on create/update. Older Kibana versions reject the key with
-// HTTP 400 ("[request body.preset]: definition for this key is missing").
-var minVersionFleetOutputPreset = version.Must(version.NewVersion("8.19.0"))
-
-var skipFleetOutputPresetIfUnsupported = versionutils.CheckIfVersionIsUnsupported(minVersionFleetOutputPreset)
+// skipFleetOutputPresetIfUnsupported skips tests that set preset in HCL when the stack is
+// below output.MinVersionFleetOutputPreset (Fleet API does not accept preset on older Kibana).
+var skipFleetOutputPresetIfUnsupported = versionutils.CheckIfVersionIsUnsupported(output.MinVersionFleetOutputPreset)
 
 //go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/legacy-create/output.tf
 var sdkLegacyCreateTestConfig string

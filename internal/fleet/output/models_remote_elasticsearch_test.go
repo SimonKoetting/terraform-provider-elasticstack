@@ -45,7 +45,7 @@ func TestOutputModelToAPICreateRemoteElasticsearchModel(t *testing.T) {
 		WriteToLogsStreams:          types.BoolValue(false),
 	}
 
-	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background())
+	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsNewOutputRemoteElasticsearch()
@@ -78,13 +78,33 @@ func TestOutputModelToAPICreateRemoteElasticsearchModelSendsBalancedPresetWhenBl
 		Preset:       types.StringValue(""),
 	}
 
-	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background())
+	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsNewOutputRemoteElasticsearch()
 	require.NoError(t, err)
 	require.NotNil(t, body.Preset)
 	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPresetBalanced, *body.Preset)
+}
+
+func TestOutputModelToAPICreateRemoteElasticsearchModelOmitsPresetWhenFleetAPIDoesNotSupportPreset(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		OutputID:     types.StringValue("remote-output-id"),
+		Name:         types.StringValue("remote-output"),
+		Type:         types.StringValue("remote_elasticsearch"),
+		Hosts:        types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://remote-es:9200")}),
+		ServiceToken: types.StringValue("service-token-value"),
+		Preset:       types.StringNull(),
+	}
+
+	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background(), false)
+	require.False(t, diags.HasError())
+
+	body, err := union.AsNewOutputRemoteElasticsearch()
+	require.NoError(t, err)
+	assert.Nil(t, body.Preset)
 }
 
 func TestOutputModelRemoteElasticsearchModelMapsSSLCertificateAuthoritiesAndClientKeypair(t *testing.T) {
@@ -114,7 +134,7 @@ func TestOutputModelRemoteElasticsearchModelMapsSSLCertificateAuthoritiesAndClie
 			Ssl:          sslObj,
 		}
 
-		union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background())
+		union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background(), true)
 		require.False(t, diags.HasError())
 
 		body, err := union.AsNewOutputRemoteElasticsearch()
@@ -140,7 +160,7 @@ func TestOutputModelRemoteElasticsearchModelMapsSSLCertificateAuthoritiesAndClie
 			Ssl:          sslObj,
 		}
 
-		union, diags := model.toAPIUpdateRemoteElasticsearchModel(context.Background())
+		union, diags := model.toAPIUpdateRemoteElasticsearchModel(context.Background(), true)
 		require.False(t, diags.HasError())
 
 		body, err := union.AsUpdateOutputRemoteElasticsearch()
@@ -167,7 +187,7 @@ func TestOutputModelToAPIUpdateRemoteElasticsearchModel(t *testing.T) {
 		Preset:       types.StringValue("balanced"),
 	}
 
-	union, diags := model.toAPIUpdateRemoteElasticsearchModel(context.Background())
+	union, diags := model.toAPIUpdateRemoteElasticsearchModel(context.Background(), true)
 	require.False(t, diags.HasError())
 
 	body, err := union.AsUpdateOutputRemoteElasticsearch()
@@ -205,7 +225,7 @@ func TestOutputModelFromAPIRemoteElasticsearchModelPreservesServiceToken(t *test
 		SyncIntegrations:   new(true),
 		WriteToLogsStreams: new(false),
 		// ServiceToken intentionally omitted to simulate redaction.
-	})
+	}, true)
 	require.False(t, diags.HasError())
 
 	assert.Equal(t, "existing-token", model.ServiceToken.ValueString())
@@ -229,8 +249,27 @@ func TestOutputModelFromAPIRemoteElasticsearchModelMapsNilPresetToBalanced(t *te
 		Name:  "remote-output",
 		Type:  kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchTypeRemoteElasticsearch,
 		Hosts: []string{"https://remote-es:9200"},
-	})
+	}, true)
 	require.False(t, diags.HasError())
 
 	assert.Equal(t, defaultFleetOutputPreset, model.Preset.ValueString())
+}
+
+func TestOutputModelFromAPIRemoteElasticsearchModelMapsNilPresetToNullWhenFleetAPIDoesNotSupportPreset(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		ServiceToken: types.StringValue("existing-token"),
+		SpaceIDs:     types.SetNull(types.StringType),
+	}
+
+	diags := model.fromAPIRemoteElasticsearchModel(context.Background(), &kbapi.OutputRemoteElasticsearch{
+		Id:    new("output-id"),
+		Name:  "remote-output",
+		Type:  kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchTypeRemoteElasticsearch,
+		Hosts: []string{"https://remote-es:9200"},
+	}, false)
+	require.False(t, diags.HasError())
+
+	assert.True(t, model.Preset.IsNull())
 }

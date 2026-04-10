@@ -72,7 +72,7 @@ func (r *outputResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	// Populate from API response
 	// With Sets, we don't need order preservation - Terraform handles set comparison automatically
-	diags = planModel.populateFromAPI(ctx, output)
+	diags = planModel.populateFromAPI(ctx, output, r.client)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
