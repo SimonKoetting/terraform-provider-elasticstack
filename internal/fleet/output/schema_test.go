@@ -50,4 +50,19 @@ func TestSchemaIncludesRemoteElasticsearchTypeAndServiceToken(t *testing.T) {
 	assert.True(t, serviceTokenAttr.Sensitive)
 	assert.True(t, serviceTokenAttr.Optional)
 	assert.NotEmpty(t, serviceTokenAttr.Validators)
+
+	presetAttr, ok := s.Attributes["preset"].(schema.StringAttribute)
+	require.True(t, ok)
+	assert.True(t, presetAttr.Optional)
+	assert.NotEmpty(t, presetAttr.Validators)
+
+	allowedPresetType := false
+	for _, validator := range presetAttr.Validators {
+		description := validator.Description(context.Background())
+		if strings.Contains(description, "elasticsearch") && strings.Contains(description, "remote_elasticsearch") {
+			allowedPresetType = true
+			break
+		}
+	}
+	assert.True(t, allowedPresetType, "expected preset to be restricted to Elasticsearch-family output types")
 }

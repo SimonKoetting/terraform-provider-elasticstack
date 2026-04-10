@@ -37,6 +37,7 @@ func TestOutputModelToAPICreateRemoteElasticsearchModel(t *testing.T) {
 		Type:                        types.StringValue("remote_elasticsearch"),
 		Hosts:                       types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://remote-es:9200")}),
 		ServiceToken:                types.StringValue("service-token-value"),
+		Preset:                      types.StringValue("throughput"),
 		DefaultIntegrations:         types.BoolValue(true),
 		DefaultMonitoring:           types.BoolValue(false),
 		SyncIntegrations:            types.BoolValue(true),
@@ -53,6 +54,8 @@ func TestOutputModelToAPICreateRemoteElasticsearchModel(t *testing.T) {
 	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchTypeRemoteElasticsearch, body.Type)
 	assert.Equal(t, "remote-output", body.Name)
 	assert.Equal(t, []string{"https://remote-es:9200"}, body.Hosts)
+	require.NotNil(t, body.Preset)
+	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset("throughput"), *body.Preset)
 	require.NotNil(t, body.ServiceToken)
 	assert.Equal(t, "service-token-value", *body.ServiceToken)
 	require.NotNil(t, body.SyncIntegrations)
@@ -140,6 +143,7 @@ func TestOutputModelToAPIUpdateRemoteElasticsearchModel(t *testing.T) {
 		Type:         types.StringValue("remote_elasticsearch"),
 		Hosts:        types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://remote-es-2:9200")}),
 		ServiceToken: types.StringValue("updated-service-token"),
+		Preset:       types.StringValue("balanced"),
 	}
 
 	union, diags := model.toAPIUpdateRemoteElasticsearchModel(context.Background())
@@ -154,6 +158,8 @@ func TestOutputModelToAPIUpdateRemoteElasticsearchModel(t *testing.T) {
 	assert.Equal(t, "updated-remote-output", *body.Name)
 	require.NotNil(t, body.Hosts)
 	assert.Equal(t, []string{"https://remote-es-2:9200"}, *body.Hosts)
+	require.NotNil(t, body.Preset)
+	assert.Equal(t, kbapi.UpdateOutputRemoteElasticsearchPreset("balanced"), *body.Preset)
 	require.NotNil(t, body.ServiceToken)
 	assert.Equal(t, "updated-service-token", *body.ServiceToken)
 }
@@ -167,10 +173,14 @@ func TestOutputModelFromAPIRemoteElasticsearchModelPreservesServiceToken(t *test
 	}
 
 	diags := model.fromAPIRemoteElasticsearchModel(context.Background(), &kbapi.OutputRemoteElasticsearch{
-		Id:                 new("output-id"),
-		Name:               "remote-output",
-		Type:               kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchTypeRemoteElasticsearch,
-		Hosts:              []string{"https://remote-es:9200"},
+		Id:    new("output-id"),
+		Name:  "remote-output",
+		Type:  kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchTypeRemoteElasticsearch,
+		Hosts: []string{"https://remote-es:9200"},
+		Preset: func() *kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchPreset {
+			value := kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchPreset("throughput")
+			return &value
+		}(),
 		SyncIntegrations:   new(true),
 		WriteToLogsStreams: new(false),
 		// ServiceToken intentionally omitted to simulate redaction.
@@ -180,6 +190,7 @@ func TestOutputModelFromAPIRemoteElasticsearchModelPreservesServiceToken(t *test
 	assert.Equal(t, "existing-token", model.ServiceToken.ValueString())
 	assert.Equal(t, "output-id", model.OutputID.ValueString())
 	assert.Equal(t, "remote_elasticsearch", model.Type.ValueString())
+	assert.Equal(t, "throughput", model.Preset.ValueString())
 	assert.True(t, model.SyncIntegrations.ValueBool())
 	assert.False(t, model.WriteToLogsStreams.ValueBool())
 }
