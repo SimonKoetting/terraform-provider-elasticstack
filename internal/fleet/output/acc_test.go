@@ -42,6 +42,13 @@ import (
 
 var minVersionOutput = version.Must(version.NewVersion("8.6.0"))
 
+// minVersionFleetOutputPreset is the minimum Stack version where the Fleet Outputs API
+// accepts the "preset" field on create/update. Older Kibana versions reject the key with
+// HTTP 400 ("[request body.preset]: definition for this key is missing").
+var minVersionFleetOutputPreset = version.Must(version.NewVersion("8.19.0"))
+
+var skipFleetOutputPresetIfUnsupported = versionutils.CheckIfVersionIsUnsupported(minVersionFleetOutputPreset)
+
 //go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/legacy-create/output.tf
 var sdkLegacyCreateTestConfig string
 
@@ -76,7 +83,7 @@ func TestAccResourceOutputElasticsearchFromSDK(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(policyName),
@@ -105,7 +112,7 @@ func TestAccResourceOutputElasticsearch(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(policyName),
@@ -123,7 +130,7 @@ func TestAccResourceOutputElasticsearch(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("update"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(policyName),
@@ -141,7 +148,7 @@ func TestAccResourceOutputElasticsearch(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("update"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(policyName),
@@ -391,7 +398,7 @@ func TestAccResourceOutputRemoteElasticsearch(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
 				ConfigVariables: config.Variables{
 					"policy_name":   config.StringVariable(policyName),
@@ -411,7 +418,7 @@ func TestAccResourceOutputRemoteElasticsearch(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutput),
+				SkipFunc:                 skipFleetOutputPresetIfUnsupported,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("update"),
 				ConfigVariables: config.Variables{
 					"policy_name":   config.StringVariable(policyName),
