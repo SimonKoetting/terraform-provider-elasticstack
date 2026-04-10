@@ -65,4 +65,14 @@ func TestSchemaIncludesRemoteElasticsearchTypeAndServiceToken(t *testing.T) {
 		}
 	}
 	assert.True(t, allowedPresetType, "expected preset to be restricted to Elasticsearch-family output types")
+
+	hasNonEmptyWhenSet := false
+	for _, validator := range presetAttr.Validators {
+		desc := validator.Description(context.Background())
+		if strings.Contains(strings.ToLower(desc), "at least") || strings.Contains(strings.ToLower(desc), "length") {
+			hasNonEmptyWhenSet = true
+			break
+		}
+	}
+	assert.True(t, hasNonEmptyWhenSet, "expected preset to enforce non-empty when set")
 }

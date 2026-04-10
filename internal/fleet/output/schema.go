@@ -98,6 +98,7 @@ func getSchema() schema.Schema {
 				Optional: true,
 				Validators: []validator.String{
 					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
+					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"sync_integrations": schema.BoolAttribute{

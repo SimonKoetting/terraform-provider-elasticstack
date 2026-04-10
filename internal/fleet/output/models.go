@@ -20,6 +20,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
@@ -27,6 +28,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// presetUnsetOrEmpty reports whether preset should not be sent to the Fleet API (unset, unknown, or blank).
+func presetUnsetOrEmpty(p types.String) bool {
+	return p.IsNull() || p.IsUnknown() || strings.TrimSpace(p.ValueString()) == ""
+}
 
 type outputModel struct {
 	ID                          types.String `tfsdk:"id"`

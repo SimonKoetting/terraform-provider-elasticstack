@@ -66,6 +66,26 @@ func TestOutputModelToAPICreateRemoteElasticsearchModel(t *testing.T) {
 	assert.False(t, *body.WriteToLogsStreams)
 }
 
+func TestOutputModelToAPICreateRemoteElasticsearchModelOmitsPresetWhenBlank(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		OutputID:     types.StringValue("remote-output-id"),
+		Name:         types.StringValue("remote-output"),
+		Type:         types.StringValue("remote_elasticsearch"),
+		Hosts:        types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://remote-es:9200")}),
+		ServiceToken: types.StringValue("service-token-value"),
+		Preset:       types.StringValue(""),
+	}
+
+	union, diags := model.toAPICreateRemoteElasticsearchModel(context.Background())
+	require.False(t, diags.HasError())
+
+	body, err := union.AsNewOutputRemoteElasticsearch()
+	require.NoError(t, err)
+	assert.Nil(t, body.Preset)
+}
+
 func TestOutputModelRemoteElasticsearchModelMapsSSLCertificateAuthoritiesAndClientKeypair(t *testing.T) {
 	t.Parallel()
 

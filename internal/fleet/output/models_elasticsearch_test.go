@@ -47,6 +47,27 @@ func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenUnset(t *testing
 	assert.Nil(t, body.Preset)
 }
 
+func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenBlank(t *testing.T) {
+	t.Parallel()
+
+	for _, preset := range []types.String{types.StringValue(""), types.StringValue("   ")} {
+		model := outputModel{
+			OutputID: types.StringValue("elasticsearch-output-id"),
+			Name:     types.StringValue("elasticsearch-output"),
+			Type:     types.StringValue("elasticsearch"),
+			Hosts:    types.ListValueMust(types.StringType, []attr.Value{types.StringValue("https://elasticsearch:9200")}),
+			Preset:   preset,
+		}
+
+		union, diags := model.toAPICreateElasticsearchModel(context.Background())
+		require.False(t, diags.HasError())
+
+		body, err := union.AsNewOutputElasticsearch()
+		require.NoError(t, err)
+		assert.Nil(t, body.Preset)
+	}
+}
+
 func TestOutputModelToAPICreateElasticsearchModelIncludesPreset(t *testing.T) {
 	t.Parallel()
 

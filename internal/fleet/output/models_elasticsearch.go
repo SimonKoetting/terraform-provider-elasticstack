@@ -19,6 +19,7 @@ package output
 
 import (
 	"context"
+	"strings"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	schemautil "github.com/elastic/terraform-provider-elasticstack/internal/utils"
@@ -75,10 +76,10 @@ func (model outputModel) toAPICreateElasticsearchModel(ctx context.Context) (kba
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueString(),
 		Preset: func() *kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset {
-			if model.Preset.IsNull() || model.Preset.IsUnknown() {
+			if presetUnsetOrEmpty(model.Preset) {
 				return nil
 			}
-			value := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset(model.Preset.ValueString())
+			value := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
 			return &value
 		}(),
 		Ssl: ssl.toCreateElasticsearch(),
@@ -112,10 +113,10 @@ func (model outputModel) toAPIUpdateElasticsearchModel(ctx context.Context) (kba
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueStringPointer(),
 		Preset: func() *kbapi.UpdateOutputElasticsearchPreset {
-			if model.Preset.IsNull() || model.Preset.IsUnknown() {
+			if presetUnsetOrEmpty(model.Preset) {
 				return nil
 			}
-			value := kbapi.UpdateOutputElasticsearchPreset(model.Preset.ValueString())
+			value := kbapi.UpdateOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
 			return &value
 		}(),
 		Ssl: ssl.toUpdateElasticsearch(),
