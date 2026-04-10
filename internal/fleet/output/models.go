@@ -33,6 +33,11 @@ import (
 // configuration omits preset; it keeps plan, API requests, and read mapping consistent.
 const defaultFleetOutputPreset = "balanced"
 
+const (
+	outputTypeElasticsearch       = "elasticsearch"
+	outputTypeRemoteElasticsearch = "remote_elasticsearch"
+)
+
 // presetUnsetOrEmpty reports whether preset should not be sent to the Fleet API (unset, unknown, or blank).
 func presetUnsetOrEmpty(p types.String) bool {
 	return p.IsNull() || p.IsUnknown() || strings.TrimSpace(p.ValueString()) == ""
@@ -150,7 +155,7 @@ func (model outputModel) toAPICreateModel(ctx context.Context, client *clients.A
 	outputType := model.Type.ValueString()
 
 	switch outputType {
-	case "elasticsearch":
+	case outputTypeElasticsearch:
 		return model.toAPICreateElasticsearchModel(ctx)
 	case "logstash":
 		return model.toAPICreateLogstashModel(ctx)
@@ -160,7 +165,7 @@ func (model outputModel) toAPICreateModel(ctx context.Context, client *clients.A
 		}
 
 		return model.toAPICreateKafkaModel(ctx)
-	case "remote_elasticsearch":
+	case outputTypeRemoteElasticsearch:
 		return model.toAPICreateRemoteElasticsearchModel(ctx)
 	default:
 		return kbapi.NewOutputUnion{}, diag.Diagnostics{
@@ -173,7 +178,7 @@ func (model outputModel) toAPIUpdateModel(ctx context.Context, client *clients.A
 	outputType := model.Type.ValueString()
 
 	switch outputType {
-	case "elasticsearch":
+	case outputTypeElasticsearch:
 		return model.toAPIUpdateElasticsearchModel(ctx)
 	case "logstash":
 		return model.toAPIUpdateLogstashModel(ctx)
@@ -183,7 +188,7 @@ func (model outputModel) toAPIUpdateModel(ctx context.Context, client *clients.A
 		}
 
 		return model.toAPIUpdateKafkaModel(ctx)
-	case "remote_elasticsearch":
+	case outputTypeRemoteElasticsearch:
 		return model.toAPIUpdateRemoteElasticsearchModel(ctx)
 	default:
 		diags.AddError(fmt.Sprintf("unhandled output type: %s", outputType), "")

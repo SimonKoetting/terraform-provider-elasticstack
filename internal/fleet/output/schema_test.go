@@ -54,7 +54,7 @@ func TestSchemaIncludesRemoteElasticsearchTypeAndServiceToken(t *testing.T) {
 	presetAttr, ok := s.Attributes["preset"].(schema.StringAttribute)
 	require.True(t, ok)
 	assert.True(t, presetAttr.Optional)
-	assert.NotEmpty(t, presetAttr.PlanModifiers)
+	assert.True(t, presetAttr.Computed)
 	assert.NotEmpty(t, presetAttr.Validators)
 
 	allowedPresetType := false
