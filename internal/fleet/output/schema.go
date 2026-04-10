@@ -19,6 +19,7 @@ package output
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/elastic/terraform-provider-elasticstack/internal/utils/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -98,7 +99,10 @@ func getSchema() schema.Schema {
 				Optional: true,
 				Validators: []validator.String{
 					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
-					stringvalidator.LengthAtLeast(1),
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^.*\S.*$`),
+						"preset must contain at least one non-whitespace character",
+					),
 				},
 			},
 			"sync_integrations": schema.BoolAttribute{
