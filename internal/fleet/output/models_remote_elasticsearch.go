@@ -19,7 +19,6 @@ package output
 
 import (
 	"context"
-	"strings"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	schemautil "github.com/elastic/terraform-provider-elasticstack/internal/utils"
@@ -37,7 +36,7 @@ func (model *outputModel) fromAPIRemoteElasticsearchModel(ctx context.Context, d
 	model.Hosts = typeutils.SliceToListTypeString(ctx, data.Hosts, path.Root("hosts"), &diags)
 	model.CaSha256 = types.StringPointerValue(data.CaSha256)
 	model.CaTrustedFingerprint = typeutils.NonEmptyStringishPointerValue(data.CaTrustedFingerprint)
-	model.Preset = typeutils.NonEmptyStringishPointerValue(data.Preset)
+	model.Preset = remoteElasticsearchPresetFromAPIRead(data.Preset)
 	model.DefaultIntegrations = types.BoolPointerValue(data.IsDefault)
 	model.DefaultMonitoring = types.BoolPointerValue(data.IsDefaultMonitoring)
 	model.ConfigYaml = types.StringPointerValue(data.ConfigYaml)
@@ -73,22 +72,16 @@ func (model outputModel) toAPICreateRemoteElasticsearchModel(ctx context.Context
 	}
 
 	body := kbapi.NewOutputRemoteElasticsearch{
-		Type:                 kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchTypeRemoteElasticsearch,
-		CaSha256:             model.CaSha256.ValueStringPointer(),
-		CaTrustedFingerprint: model.CaTrustedFingerprint.ValueStringPointer(),
-		ConfigYaml:           model.ConfigYaml.ValueStringPointer(),
-		Hosts:                typeutils.ListTypeToSliceString(ctx, model.Hosts, path.Root("hosts"), &diags),
-		Id:                   model.OutputID.ValueStringPointer(),
-		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
-		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
-		Name:                 model.Name.ValueString(),
-		Preset: func() *kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset {
-			if presetUnsetOrEmpty(model.Preset) {
-				return nil
-			}
-			value := kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
-			return &value
-		}(),
+		Type:                        kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchTypeRemoteElasticsearch,
+		CaSha256:                    model.CaSha256.ValueStringPointer(),
+		CaTrustedFingerprint:        model.CaTrustedFingerprint.ValueStringPointer(),
+		ConfigYaml:                  model.ConfigYaml.ValueStringPointer(),
+		Hosts:                       typeutils.ListTypeToSliceString(ctx, model.Hosts, path.Root("hosts"), &diags),
+		Id:                          model.OutputID.ValueStringPointer(),
+		IsDefault:                   model.DefaultIntegrations.ValueBoolPointer(),
+		IsDefaultMonitoring:         model.DefaultMonitoring.ValueBoolPointer(),
+		Name:                        model.Name.ValueString(),
+		Preset:                      remoteElasticsearchCreatePresetForAPI(model),
 		ServiceToken:                model.ServiceToken.ValueStringPointer(),
 		Ssl:                         ssl.toCreateRemoteElasticsearch(),
 		SyncIntegrations:            model.SyncIntegrations.ValueBoolPointer(),
@@ -117,20 +110,14 @@ func (model outputModel) toAPIUpdateRemoteElasticsearchModel(ctx context.Context
 			outputType := kbapi.RemoteElasticsearch
 			return &outputType
 		}(),
-		CaSha256:             model.CaSha256.ValueStringPointer(),
-		CaTrustedFingerprint: model.CaTrustedFingerprint.ValueStringPointer(),
-		ConfigYaml:           model.ConfigYaml.ValueStringPointer(),
-		Hosts:                schemautil.SliceRef(typeutils.ListTypeToSliceString(ctx, model.Hosts, path.Root("hosts"), &diags)),
-		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
-		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
-		Name:                 model.Name.ValueStringPointer(),
-		Preset: func() *kbapi.UpdateOutputRemoteElasticsearchPreset {
-			if presetUnsetOrEmpty(model.Preset) {
-				return nil
-			}
-			value := kbapi.UpdateOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
-			return &value
-		}(),
+		CaSha256:                    model.CaSha256.ValueStringPointer(),
+		CaTrustedFingerprint:        model.CaTrustedFingerprint.ValueStringPointer(),
+		ConfigYaml:                  model.ConfigYaml.ValueStringPointer(),
+		Hosts:                       schemautil.SliceRef(typeutils.ListTypeToSliceString(ctx, model.Hosts, path.Root("hosts"), &diags)),
+		IsDefault:                   model.DefaultIntegrations.ValueBoolPointer(),
+		IsDefaultMonitoring:         model.DefaultMonitoring.ValueBoolPointer(),
+		Name:                        model.Name.ValueStringPointer(),
+		Preset:                      remoteElasticsearchUpdatePresetForAPI(model),
 		ServiceToken:                model.ServiceToken.ValueStringPointer(),
 		Ssl:                         ssl.toUpdateRemoteElasticsearch(),
 		SyncIntegrations:            model.SyncIntegrations.ValueBoolPointer(),

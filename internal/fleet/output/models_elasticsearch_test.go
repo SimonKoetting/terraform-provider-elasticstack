@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenUnset(t *testing.T) {
+func TestOutputModelToAPICreateElasticsearchModelSendsBalancedPresetWhenUnset(t *testing.T) {
 	t.Parallel()
 
 	model := outputModel{
@@ -44,10 +44,11 @@ func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenUnset(t *testing
 
 	body, err := union.AsNewOutputElasticsearch()
 	require.NoError(t, err)
-	assert.Nil(t, body.Preset)
+	require.NotNil(t, body.Preset)
+	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputElasticsearchPresetBalanced, *body.Preset)
 }
 
-func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenBlank(t *testing.T) {
+func TestOutputModelToAPICreateElasticsearchModelSendsBalancedPresetWhenBlank(t *testing.T) {
 	t.Parallel()
 
 	for _, preset := range []types.String{types.StringValue(""), types.StringValue("   ")} {
@@ -64,7 +65,8 @@ func TestOutputModelToAPICreateElasticsearchModelOmitsPresetWhenBlank(t *testing
 
 		body, err := union.AsNewOutputElasticsearch()
 		require.NoError(t, err)
-		assert.Nil(t, body.Preset)
+		require.NotNil(t, body.Preset)
+		assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputElasticsearchPresetBalanced, *body.Preset)
 	}
 }
 
@@ -127,4 +129,22 @@ func TestOutputModelFromAPIElasticsearchModelMapsPreset(t *testing.T) {
 	require.False(t, diags.HasError())
 
 	assert.Equal(t, "latency", model.Preset.ValueString())
+}
+
+func TestOutputModelFromAPIElasticsearchModelMapsNilPresetToBalanced(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		SpaceIDs: types.SetNull(types.StringType),
+	}
+
+	diags := model.fromAPIElasticsearchModel(context.Background(), &kbapi.OutputElasticsearch{
+		Id:    new("output-id"),
+		Name:  "elasticsearch-output",
+		Type:  kbapi.KibanaHTTPAPIsOutputElasticsearchTypeElasticsearch,
+		Hosts: []string{"https://elasticsearch:9200"},
+	})
+	require.False(t, diags.HasError())
+
+	assert.Equal(t, defaultFleetOutputPreset, model.Preset.ValueString())
 }

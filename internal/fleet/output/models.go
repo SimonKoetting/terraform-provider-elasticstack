@@ -29,9 +29,71 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// defaultFleetOutputPreset is the Fleet default for Elasticsearch-family outputs when the
+// configuration omits preset; it keeps plan, API requests, and read mapping consistent.
+const defaultFleetOutputPreset = "balanced"
+
 // presetUnsetOrEmpty reports whether preset should not be sent to the Fleet API (unset, unknown, or blank).
 func presetUnsetOrEmpty(p types.String) bool {
 	return p.IsNull() || p.IsUnknown() || strings.TrimSpace(p.ValueString()) == ""
+}
+
+func elasticsearchCreatePresetForAPI(model outputModel) *kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset {
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func elasticsearchUpdatePresetForAPI(model outputModel) *kbapi.UpdateOutputElasticsearchPreset {
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.UpdateOutputElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.UpdateOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func remoteElasticsearchCreatePresetForAPI(model outputModel) *kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset {
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func remoteElasticsearchUpdatePresetForAPI(model outputModel) *kbapi.UpdateOutputRemoteElasticsearchPreset {
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.UpdateOutputRemoteElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.UpdateOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func elasticsearchPresetFromAPIRead(p *kbapi.KibanaHTTPAPIsOutputElasticsearchPreset) types.String {
+	if p == nil {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	s := strings.TrimSpace(string(*p))
+	if s == "" {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	return types.StringValue(s)
+}
+
+func remoteElasticsearchPresetFromAPIRead(p *kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchPreset) types.String {
+	if p == nil {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	s := strings.TrimSpace(string(*p))
+	if s == "" {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	return types.StringValue(s)
 }
 
 type outputModel struct {

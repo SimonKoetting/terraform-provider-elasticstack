@@ -95,9 +95,13 @@ func getSchema() schema.Schema {
 			},
 			"preset": schema.StringAttribute{
 				Description: "Fleet output performance preset. Only valid when type is elasticsearch or remote_elasticsearch. " +
+					"Defaults to balanced when omitted for those types so plan and state match Fleet. " +
 					"The Fleet Outputs API must support this field (Elastic Stack 8.19.0 or later); older Kibana versions reject it. " +
 					"If config_yaml is also set, Fleet applies both; use preset for supported tuning and config_yaml for additional keys.",
 				Optional: true,
+				PlanModifiers: []planmodifier.String{
+					presetDefaultBalancedForElasticsearchFamily(),
+				},
 				Validators: []validator.String{
 					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
 					stringvalidator.RegexMatches(

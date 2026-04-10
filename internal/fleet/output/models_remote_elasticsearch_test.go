@@ -66,7 +66,7 @@ func TestOutputModelToAPICreateRemoteElasticsearchModel(t *testing.T) {
 	assert.False(t, *body.WriteToLogsStreams)
 }
 
-func TestOutputModelToAPICreateRemoteElasticsearchModelOmitsPresetWhenBlank(t *testing.T) {
+func TestOutputModelToAPICreateRemoteElasticsearchModelSendsBalancedPresetWhenBlank(t *testing.T) {
 	t.Parallel()
 
 	model := outputModel{
@@ -83,7 +83,8 @@ func TestOutputModelToAPICreateRemoteElasticsearchModelOmitsPresetWhenBlank(t *t
 
 	body, err := union.AsNewOutputRemoteElasticsearch()
 	require.NoError(t, err)
-	assert.Nil(t, body.Preset)
+	require.NotNil(t, body.Preset)
+	assert.Equal(t, kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPresetBalanced, *body.Preset)
 }
 
 func TestOutputModelRemoteElasticsearchModelMapsSSLCertificateAuthoritiesAndClientKeypair(t *testing.T) {
@@ -213,4 +214,23 @@ func TestOutputModelFromAPIRemoteElasticsearchModelPreservesServiceToken(t *test
 	assert.Equal(t, "throughput", model.Preset.ValueString())
 	assert.True(t, model.SyncIntegrations.ValueBool())
 	assert.False(t, model.WriteToLogsStreams.ValueBool())
+}
+
+func TestOutputModelFromAPIRemoteElasticsearchModelMapsNilPresetToBalanced(t *testing.T) {
+	t.Parallel()
+
+	model := outputModel{
+		ServiceToken: types.StringValue("existing-token"),
+		SpaceIDs:     types.SetNull(types.StringType),
+	}
+
+	diags := model.fromAPIRemoteElasticsearchModel(context.Background(), &kbapi.OutputRemoteElasticsearch{
+		Id:    new("output-id"),
+		Name:  "remote-output",
+		Type:  kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchTypeRemoteElasticsearch,
+		Hosts: []string{"https://remote-es:9200"},
+	})
+	require.False(t, diags.HasError())
+
+	assert.Equal(t, defaultFleetOutputPreset, model.Preset.ValueString())
 }
