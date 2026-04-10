@@ -20,32 +20,135 @@ package output
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	"github.com/elastic/terraform-provider-elasticstack/internal/diagutil"
+	"github.com/elastic/terraform-provider-elasticstack/internal/utils/typeutils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type outputModel struct {
-	ID                   types.String `tfsdk:"id"`
-	OutputID             types.String `tfsdk:"output_id"`
-	Name                 types.String `tfsdk:"name"`
-	Type                 types.String `tfsdk:"type"`
-	Hosts                types.List   `tfsdk:"hosts"` // > string
-	CaSha256             types.String `tfsdk:"ca_sha256"`
-	CaTrustedFingerprint types.String `tfsdk:"ca_trusted_fingerprint"`
-	DefaultIntegrations  types.Bool   `tfsdk:"default_integrations"`
-	DefaultMonitoring    types.Bool   `tfsdk:"default_monitoring"`
-	ConfigYaml           types.String `tfsdk:"config_yaml"`
-	SpaceIDs             types.Set    `tfsdk:"space_ids"` // > string
-	Ssl                  types.Object `tfsdk:"ssl"`       // > outputSslModel
-	Kafka                types.Object `tfsdk:"kafka"`     // > outputKafkaModel
+// defaultFleetOutputPreset is the Fleet default for Elasticsearch-family outputs when the
+// configuration omits preset; it keeps plan, API requests, and read mapping consistent.
+const defaultFleetOutputPreset = "balanced"
+
+const (
+	outputTypeElasticsearch       = "elasticsearch"
+	outputTypeRemoteElasticsearch = "remote_elasticsearch"
+)
+
+// presetUnsetOrEmpty reports whether preset should not be sent to the Fleet API (unset, unknown, or blank).
+func presetUnsetOrEmpty(p types.String) bool {
+	return p.IsNull() || p.IsUnknown() || strings.TrimSpace(p.ValueString()) == ""
 }
 
-func (model *outputModel) populateFromAPI(ctx context.Context, union *kbapi.OutputUnion) (diags diag.Diagnostics) {
+func elasticsearchCreatePresetForAPI(model outputModel, fleetPresetAPISupported bool) *kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset {
+	if !fleetPresetAPISupported {
+		return nil
+	}
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.KibanaHTTPAPIsNewOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func elasticsearchUpdatePresetForAPI(model outputModel, fleetPresetAPISupported bool) *kbapi.UpdateOutputElasticsearchPreset {
+	if !fleetPresetAPISupported {
+		return nil
+	}
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.UpdateOutputElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.UpdateOutputElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func remoteElasticsearchCreatePresetForAPI(model outputModel, fleetPresetAPISupported bool) *kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset {
+	if !fleetPresetAPISupported {
+		return nil
+	}
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.KibanaHTTPAPIsNewOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func remoteElasticsearchUpdatePresetForAPI(model outputModel, fleetPresetAPISupported bool) *kbapi.UpdateOutputRemoteElasticsearchPreset {
+	if !fleetPresetAPISupported {
+		return nil
+	}
+	if presetUnsetOrEmpty(model.Preset) {
+		v := kbapi.UpdateOutputRemoteElasticsearchPresetBalanced
+		return &v
+	}
+	v := kbapi.UpdateOutputRemoteElasticsearchPreset(strings.TrimSpace(model.Preset.ValueString()))
+	return &v
+}
+
+func elasticsearchPresetFromAPIRead(p *kbapi.KibanaHTTPAPIsOutputElasticsearchPreset, fleetPresetAPISupported bool) types.String {
+	if !fleetPresetAPISupported {
+		return typeutils.NonEmptyStringishPointerValue(p)
+	}
+	if p == nil {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	s := strings.TrimSpace(string(*p))
+	if s == "" {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	return types.StringValue(s)
+}
+
+func remoteElasticsearchPresetFromAPIRead(p *kbapi.KibanaHTTPAPIsOutputRemoteElasticsearchPreset, fleetPresetAPISupported bool) types.String {
+	if !fleetPresetAPISupported {
+		return typeutils.NonEmptyStringishPointerValue(p)
+	}
+	if p == nil {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	s := strings.TrimSpace(string(*p))
+	if s == "" {
+		return types.StringValue(defaultFleetOutputPreset)
+	}
+	return types.StringValue(s)
+}
+
+type outputModel struct {
+	ID                          types.String `tfsdk:"id"`
+	OutputID                    types.String `tfsdk:"output_id"`
+	Name                        types.String `tfsdk:"name"`
+	Type                        types.String `tfsdk:"type"`
+	Hosts                       types.List   `tfsdk:"hosts"` // > string
+	ServiceToken                types.String `tfsdk:"service_token"`
+	Preset                      types.String `tfsdk:"preset"`
+	CaSha256                    types.String `tfsdk:"ca_sha256"`
+	CaTrustedFingerprint        types.String `tfsdk:"ca_trusted_fingerprint"`
+	DefaultIntegrations         types.Bool   `tfsdk:"default_integrations"`
+	DefaultMonitoring           types.Bool   `tfsdk:"default_monitoring"`
+	ConfigYaml                  types.String `tfsdk:"config_yaml"`
+	SpaceIDs                    types.Set    `tfsdk:"space_ids"` // > string
+	Ssl                         types.Object `tfsdk:"ssl"`       // > outputSslModel
+	Kafka                       types.Object `tfsdk:"kafka"`     // > outputKafkaModel
+	SyncIntegrations            types.Bool   `tfsdk:"sync_integrations"`
+	SyncUninstalledIntegrations types.Bool   `tfsdk:"sync_uninstalled_integrations"`
+	WriteToLogsStreams          types.Bool   `tfsdk:"write_to_logs_streams"`
+}
+
+func (model *outputModel) populateFromAPI(ctx context.Context, union *kbapi.OutputUnion, client *clients.APIClient) (diags diag.Diagnostics) {
 	if union == nil {
+		return
+	}
+
+	fleetPresetAPISupported, versionDiags := client.EnforceMinVersion(ctx, MinVersionFleetOutputPreset)
+	diags.Append(diagutil.FrameworkDiagsFromSDK(versionDiags)...)
+	if diags.HasError() {
 		return
 	}
 
@@ -57,13 +160,15 @@ func (model *outputModel) populateFromAPI(ctx context.Context, union *kbapi.Outp
 
 	switch output := output.(type) {
 	case kbapi.OutputElasticsearch:
-		diags.Append(model.fromAPIElasticsearchModel(ctx, &output)...)
+		diags.Append(model.fromAPIElasticsearchModel(ctx, &output, fleetPresetAPISupported)...)
 
 	case kbapi.OutputLogstash:
 		diags.Append(model.fromAPILogstashModel(ctx, &output)...)
 
 	case kbapi.OutputKafka:
 		diags.Append(model.fromAPIKafkaModel(ctx, &output)...)
+	case kbapi.OutputRemoteElasticsearch:
+		diags.Append(model.fromAPIRemoteElasticsearchModel(ctx, &output, fleetPresetAPISupported)...)
 	default:
 		diags.AddError(fmt.Sprintf("unhandled output type: %T", output), "")
 	}
@@ -72,11 +177,19 @@ func (model *outputModel) populateFromAPI(ctx context.Context, union *kbapi.Outp
 }
 
 func (model outputModel) toAPICreateModel(ctx context.Context, client *clients.APIClient) (kbapi.NewOutputUnion, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	fleetPresetAPISupported, versionDiags := client.EnforceMinVersion(ctx, MinVersionFleetOutputPreset)
+	diags.Append(diagutil.FrameworkDiagsFromSDK(versionDiags)...)
+	if diags.HasError() {
+		return kbapi.NewOutputUnion{}, diags
+	}
+
 	outputType := model.Type.ValueString()
 
 	switch outputType {
-	case "elasticsearch":
-		return model.toAPICreateElasticsearchModel(ctx)
+	case outputTypeElasticsearch:
+		return model.toAPICreateElasticsearchModel(ctx, fleetPresetAPISupported)
 	case "logstash":
 		return model.toAPICreateLogstashModel(ctx)
 	case "kafka":
@@ -85,6 +198,8 @@ func (model outputModel) toAPICreateModel(ctx context.Context, client *clients.A
 		}
 
 		return model.toAPICreateKafkaModel(ctx)
+	case outputTypeRemoteElasticsearch:
+		return model.toAPICreateRemoteElasticsearchModel(ctx, fleetPresetAPISupported)
 	default:
 		return kbapi.NewOutputUnion{}, diag.Diagnostics{
 			diag.NewErrorDiagnostic(fmt.Sprintf("unhandled output type: %s", outputType), ""),
@@ -93,11 +208,17 @@ func (model outputModel) toAPICreateModel(ctx context.Context, client *clients.A
 }
 
 func (model outputModel) toAPIUpdateModel(ctx context.Context, client *clients.APIClient) (union kbapi.UpdateOutputUnion, diags diag.Diagnostics) {
+	fleetPresetAPISupported, versionDiags := client.EnforceMinVersion(ctx, MinVersionFleetOutputPreset)
+	diags.Append(diagutil.FrameworkDiagsFromSDK(versionDiags)...)
+	if diags.HasError() {
+		return kbapi.UpdateOutputUnion{}, diags
+	}
+
 	outputType := model.Type.ValueString()
 
 	switch outputType {
-	case "elasticsearch":
-		return model.toAPIUpdateElasticsearchModel(ctx)
+	case outputTypeElasticsearch:
+		return model.toAPIUpdateElasticsearchModel(ctx, fleetPresetAPISupported)
 	case "logstash":
 		return model.toAPIUpdateLogstashModel(ctx)
 	case "kafka":
@@ -106,11 +227,20 @@ func (model outputModel) toAPIUpdateModel(ctx context.Context, client *clients.A
 		}
 
 		return model.toAPIUpdateKafkaModel(ctx)
+	case outputTypeRemoteElasticsearch:
+		return model.toAPIUpdateRemoteElasticsearchModel(ctx, fleetPresetAPISupported)
 	default:
 		diags.AddError(fmt.Sprintf("unhandled output type: %s", outputType), "")
 	}
 
 	return
+}
+
+func clearRemoteElasticsearchOnlyFields(model *outputModel) {
+	model.ServiceToken = types.StringNull()
+	model.SyncIntegrations = types.BoolNull()
+	model.SyncUninstalledIntegrations = types.BoolNull()
+	model.WriteToLogsStreams = types.BoolNull()
 }
 
 func assertKafkaSupport(ctx context.Context, client *clients.APIClient) diag.Diagnostics {

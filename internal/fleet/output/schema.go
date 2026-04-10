@@ -19,6 +19,7 @@ package output
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/elastic/terraform-provider-elasticstack/internal/utils/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -72,7 +73,7 @@ func getSchema() schema.Schema {
 				Description: "The output type.",
 				Required:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("elasticsearch", "logstash", "kafka"),
+					stringvalidator.OneOf("elasticsearch", "logstash", "kafka", "remote_elasticsearch"),
 				},
 			},
 			"hosts": schema.ListAttribute{
@@ -82,6 +83,51 @@ func getSchema() schema.Schema {
 					listvalidator.SizeAtLeast(1),
 				},
 				ElementType: types.StringType,
+			},
+			"service_token": schema.StringAttribute{
+				Description: "Service token for remote Elasticsearch outputs.",
+				Optional:    true,
+				Sensitive:   true,
+				Validators: []validator.String{
+					validators.RequiredIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
+					validators.AllowedIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
+				},
+			},
+			"preset": schema.StringAttribute{
+				Description: "Fleet output performance preset. Only valid when type is elasticsearch or remote_elasticsearch. " +
+					"Omitted values are computed from Fleet (typically balanced). " +
+					"The Fleet Outputs API must support this field (Elastic Stack 8.19.0 or later); older Kibana versions reject it. " +
+					"If config_yaml is also set, Fleet applies both; use preset for supported tuning and config_yaml for additional keys.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					validators.AllowedIfDependentPathOneOf(path.Root("type"), []string{"elasticsearch", "remote_elasticsearch"}),
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^.*\S.*$`),
+						"preset must contain at least one non-whitespace character",
+					),
+				},
+			},
+			"sync_integrations": schema.BoolAttribute{
+				Description: "When type is remote_elasticsearch, whether Fleet synchronizes integration assets to the remote cluster. Subscription and version requirements apply per Elastic documentation.",
+				Optional:    true,
+				Validators: []validator.Bool{
+					validators.AllowedIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
+				},
+			},
+			"sync_uninstalled_integrations": schema.BoolAttribute{
+				Description: "When type is remote_elasticsearch, whether to sync uninstalled integrations. Only meaningful when sync_integrations is enabled.",
+				Optional:    true,
+				Validators: []validator.Bool{
+					validators.AllowedIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
+				},
+			},
+			"write_to_logs_streams": schema.BoolAttribute{
+				Description: "When type is remote_elasticsearch, whether agents using this output send data to wired logs streams (preview in newer stacks).",
+				Optional:    true,
+				Validators: []validator.Bool{
+					validators.AllowedIfDependentPathEquals(path.Root("type"), "remote_elasticsearch"),
+				},
 			},
 			"ca_sha256": schema.StringAttribute{
 				Description: "Fingerprint of the Elasticsearch CA certificate.",
@@ -131,14 +177,14 @@ func getSchema() schema.Schema {
 					},
 					"certificate": schema.StringAttribute{
 						Description: "Client SSL certificate.",
-						Required:    true,
+						Optional:    true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),
 						},
 					},
 					"key": schema.StringAttribute{
 						Description: "Client SSL certificate key.",
-						Required:    true,
+						Optional:    true,
 						Sensitive:   true,
 						Validators: []validator.String{
 							stringvalidator.LengthAtLeast(1),

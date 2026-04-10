@@ -3,8 +3,9 @@ provider "elasticstack" {
 }
 
 resource "elasticstack_fleet_output" "test_output" {
-  name = "Test Output"
-  type = "elasticsearch"
+  name   = "Test Output"
+  type   = "elasticsearch"
+  preset = "throughput"
   config_yaml = yamlencode({
     "ssl.verification_mode" : "none"
   })

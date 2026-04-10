@@ -62,7 +62,7 @@ func (r *outputResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	diags = stateModel.populateFromAPI(ctx, output)
+	diags = stateModel.populateFromAPI(ctx, output, r.client)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

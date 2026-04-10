@@ -38,6 +38,10 @@ var (
 
 var MinVersionOutputKafka = version.Must(version.NewVersion("8.13.0"))
 
+// MinVersionFleetOutputPreset is the minimum Stack version where Fleet accepts the preset
+// field on output create/update. Older Kibana returns HTTP 400 if preset is present.
+var MinVersionFleetOutputPreset = version.Must(version.NewVersion("8.19.0"))
+
 // NewResource is a helper function to simplify the provider implementation.
 func NewResource() resource.Resource {
 	return &outputResource{}
