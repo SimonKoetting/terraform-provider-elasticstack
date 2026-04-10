@@ -22,6 +22,7 @@ provider "elasticstack" {
 resource "elasticstack_fleet_output" "test_output" {
   name = "Test Output"
   type = "elasticsearch"
+  preset = "throughput"
   config_yaml = yamlencode({
     "ssl.verification_mode" : "none"
   })
@@ -207,6 +208,7 @@ resource "elasticstack_fleet_output" "remote" {
   name                 = "Remote Elasticsearch"
   output_id            = "remote-es-output"
   type                 = "remote_elasticsearch"
+  preset               = "balanced"
   service_token        = var.remote_service_token
   default_integrations = false
   default_monitoring   = false
@@ -250,6 +252,7 @@ variable "remote_service_token" {
 - `default_monitoring` (Boolean) Make this output the default for agent monitoring.
 - `kafka` (Attributes) Kafka-specific configuration. (see [below for nested schema](#nestedatt--kafka))
 - `output_id` (String) Unique identifier of the output.
+- `preset` (String) Fleet output performance preset. This can be set only when `type` is `elasticsearch` or `remote_elasticsearch`.
 - `service_token` (String, Sensitive) Service token for remote Elasticsearch outputs.
 - `space_ids` (Set of String) The Kibana space IDs where this output is available. When set, the output will be created and managed within the specified space. Note: The order of space IDs does not matter as this is a set.
 - `ssl` (Attributes) SSL configuration. (see [below for nested schema](#nestedatt--ssl))
