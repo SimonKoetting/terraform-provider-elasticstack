@@ -37,7 +37,7 @@ func ensureFleetDefaultAgentDownloadSource(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -114,7 +114,7 @@ func (r integrationResource) create(ctx context.Context, plan tfsdk.Plan, state 
 	}
 
 	waitErr := asyncutils.WaitForStateTransition(ctx, "fleet integration", getPackageID(name, version), func(ctx context.Context) (bool, error) {
-		pkg, getDiags := fleet.GetPackage(ctx, client, name, version, installOptions.SpaceID)
+		pkg, getDiags := fleet.GetPackage(ctx, fleetClient, name, version, installOptions.SpaceID)
 		if getDiags.HasError() {
 			return false, fmt.Errorf("failed to read package installation status: %s", getDiags[0].Summary())
 		}

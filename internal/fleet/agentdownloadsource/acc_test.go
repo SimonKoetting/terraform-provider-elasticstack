@@ -221,7 +221,7 @@ func testCheckFleetAgentDownloadSourceSpaceContains(resourceName, spaceID string
 }
 
 func checkResourceFleetAgentDownloadSourceDestroy(s *terraform.State) error {
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 	if err != nil {
 		return err
 	}
