@@ -38,11 +38,8 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-<<<<<<< tamper_protection
 	planWantsTamperProtection := planModel.IsProtected
 
-	client, err := r.client.GetFleetClient()
-=======
 	client, diags := r.client.GetKibanaClient(ctx, planModel.KibanaConnection)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -50,7 +47,7 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	fleetClient, err := client.GetFleetClient()
->>>>>>> main
+	
 	if err != nil {
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
@@ -115,7 +112,7 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		updated, updateDiags := fleet.UpdateAgentPolicy(ctx, client, policy.Id, spaceID, updateBody)
+		updated, updateDiags := fleet.UpdateAgentPolicy(ctx, fleetClient, policy.Id, spaceID, updateBody)
 		resp.Diagnostics.Append(updateDiags...)
 		if resp.Diagnostics.HasError() {
 			return

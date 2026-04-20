@@ -33,6 +33,7 @@ var (
 	_ resource.Resource                = &agentPolicyResource{}
 	_ resource.ResourceWithConfigure   = &agentPolicyResource{}
 	_ resource.ResourceWithImportState = &agentPolicyResource{}
+	_ resource.ResourceWithModifyPlan  = &agentPolicyResource{}
 )
 
 var (
@@ -136,7 +137,7 @@ func (r *agentPolicyResource) buildFeatures(ctx context.Context, apiClient *clie
 		return features{}, diagutil.FrameworkDiagsFromSDK(diags)
 	}
 
-	supportsTamperProtection, diags := r.client.EnforceMinVersion(ctx, MinVersionTamperProtection)
+	supportsTamperProtection, diags := apiClient.EnforceMinVersion(ctx, MinVersionTamperProtection)
 	if diags.HasError() {
 		return features{}, diagutil.FrameworkDiagsFromSDK(diags)
 	}
