@@ -518,7 +518,7 @@ func TestAccResourceAlertingRuleInconsistentParams(t *testing.T) {
 	})
 }
 
-//go:embed testdata/TestAccResourceAlertingRuleFromSDK/create/rule.tf
+//go:embed testdata/TestAccResourceAlertingRuleFromSDK/create/main.tf
 var testAccResourceAlertingRuleFromSDKCreateConfig string
 
 func TestAccResourceAlertingRuleFromSDK(t *testing.T) {
@@ -830,7 +830,7 @@ func TestAccResourceAlertingRuleFrequencyExclusivity(t *testing.T) {
 }
 
 func checkResourceAlertingRuleDestroy(s *terraform.State) error {
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 	if err != nil {
 		return err
 	}
@@ -867,7 +867,7 @@ func testCheckAlertingRuleAPIParams(resourceName string, check func(params map[s
 
 		compID, _ := clients.CompositeIDFromStr(rs.Primary.ID)
 
-		client, err := clients.NewAcceptanceTestingClient()
+		client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 		if err != nil {
 			return err
 		}

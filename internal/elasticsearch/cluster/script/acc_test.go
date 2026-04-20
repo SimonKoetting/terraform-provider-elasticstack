@@ -19,6 +19,7 @@ package script_test
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"testing"
 
@@ -30,6 +31,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"github.com/stretchr/testify/require"
 )
+
+//go:embed testdata/TestAccResourceScriptFromSDK/upgrade/main.tf
+var testAccResourceScriptFromSDKConfig string
 
 func TestAccResourceScript(t *testing.T) {
 	scriptID := sdkacctest.RandStringFromCharSet(10, sdkacctest.CharSetAlphaNum)
@@ -64,7 +68,7 @@ func TestAccResourceScript(t *testing.T) {
 				ProtoV6ProviderFactories: acctest.Providers,
 				// Ensure the provider doesn't panic if the script has been deleted outside of the Terraform flow
 				PreConfig: func() {
-					client, err := clients.NewAcceptanceTestingClient()
+					client, err := clients.NewAcceptanceTestingElasticsearchScopedClient()
 					require.NoError(t, err)
 
 					esClient, err := client.GetESClient()
@@ -110,7 +114,7 @@ func TestAccResourceScriptImport(t *testing.T) {
 				ConfigVariables:          config.Variables{"script_id": config.StringVariable(scriptID)},
 				ResourceName:             "elasticstack_elasticsearch_script.test",
 				ImportStateIdFunc: func(_ *terraform.State) (string, error) {
-					client, err := clients.NewAcceptanceTestingClient()
+					client, err := clients.NewAcceptanceTestingElasticsearchScopedClient()
 					if err != nil {
 						return "", err
 					}
@@ -166,7 +170,8 @@ func TestAccResourceScriptFromSDK(t *testing.T) {
 						VersionConstraint: "0.11.17",
 					},
 				},
-				Config: testAccScriptCreateFromSDK(scriptID),
+				Config:          testAccResourceScriptFromSDKConfig,
+				ConfigVariables: config.Variables{"script_id": config.StringVariable(scriptID)},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_elasticsearch_script.test", "script_id", scriptID),
 					resource.TestCheckResourceAttr("elasticstack_elasticsearch_script.test", "lang", "painless"),
@@ -189,23 +194,8 @@ func TestAccResourceScriptFromSDK(t *testing.T) {
 	})
 }
 
-func testAccScriptCreateFromSDK(id string) string {
-	return fmt.Sprintf(`
-provider "elasticstack" {
-  elasticsearch {}
-}
-
-resource "elasticstack_elasticsearch_script" "test" {
-  script_id = "%s"
-  lang      = "painless"
-  source    = "Math.log(_score * 2) + params['my_modifier']"
-  context   = "score"
-}
-	`, id)
-}
-
 func checkScriptDestroy(s *terraform.State) error {
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingElasticsearchScopedClient()
 	if err != nil {
 		return err
 	}

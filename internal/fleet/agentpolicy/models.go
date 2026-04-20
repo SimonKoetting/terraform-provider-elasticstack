@@ -81,6 +81,7 @@ type globalDataTagsItemModel struct {
 
 type agentPolicyModel struct {
 	ID                        types.String         `tfsdk:"id"`
+	KibanaConnection          types.List           `tfsdk:"kibana_connection"`
 	PolicyID                  types.String         `tfsdk:"policy_id"`
 	Name                      types.String         `tfsdk:"name"`
 	Namespace                 types.String         `tfsdk:"namespace"`

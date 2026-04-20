@@ -12,11 +12,11 @@ import (
 	"maps"
 	"os"
 	"path"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -337,6 +337,37 @@ func (m Map) MustDelete(key string) {
 	}
 }
 
+func normalizeComparableSchemaValue(value any) any {
+	switch t := value.(type) {
+	case Map:
+		normalized := make(map[string]any, len(t))
+		for key, value := range t {
+			normalized[key] = normalizeComparableSchemaValue(value)
+		}
+		return normalized
+	case map[string]any:
+		normalized := make(map[string]any, len(t))
+		for key, value := range t {
+			normalized[key] = normalizeComparableSchemaValue(value)
+		}
+		return normalized
+	case Slice:
+		normalized := make([]any, len(t))
+		for i, value := range t {
+			normalized[i] = normalizeComparableSchemaValue(value)
+		}
+		return normalized
+	case []any:
+		normalized := make([]any, len(t))
+		for i, value := range t {
+			normalized[i] = normalizeComparableSchemaValue(value)
+		}
+		return normalized
+	default:
+		return value
+	}
+}
+
 func (m Map) CreateRef(schema *Schema, name string, key string) Map {
 	refTarget := m.MustGet(key) // Check the full path
 	refPath := fmt.Sprintf("schemas.%s", name)
@@ -345,9 +376,10 @@ func (m Map) CreateRef(schema *Schema, name string, key string) Map {
 	// If the component schema already exists and is not the same, panic
 	writeComponent := true
 	if existing, ok := schema.Components.Get(refPath); ok {
-		if reflect.DeepEqual(refTarget, existing) {
+		if cmp.Equal(normalizeComparableSchemaValue(refTarget), normalizeComparableSchemaValue(existing)) {
 			writeComponent = false
 		} else {
+			log.Printf("Component schema diff for %q (-refTarget +existing):\n%s", refPath, cmp.Diff(normalizeComparableSchemaValue(refTarget), normalizeComparableSchemaValue(existing)))
 			log.Panicf("Component schema key already in use and not an exact duplicate: %q", refPath)
 			return nil
 		}
@@ -566,17 +598,18 @@ var transformers = []TransformFunc{
 	removeBrokenDiscriminator,
 	fixPutSecurityRoleName,
 	fixGetSpacesParams,
-	fixGetSyntheticsMonitorsParams,
-	fixGetMaintenanceWindowFindParams,
-	fixGetStreamsAttachmentTypesParams,
-	fixGetWorkflowsExecutionsParams,
+	fixSpaceResponseSchemas,
 	fixSecurityExceptionListItems,
 	removeDuplicateOneOfRefs,
+	transformRemoveAnyOfWhenOneOfPresent,
 	fixDashboardPanelItemRefs,
+	fixAlertingRuleParams,
+	fixSyntheticsMonitorModels,
+	fixSyntheticsMonitorParams,
+	fixAlertingRuleBody,
 	transformRemoveExamples,
 	transformRemoveUnusedComponents,
 	transformOmitEmptyNullable,
-	fixAlertingRuleParams,
 }
 
 //go:embed dashboards.json
@@ -793,6 +826,66 @@ func transformKibanaPaths(schema *Schema) {
 	sytheticsParamsPath := schema.MustGetPath("/api/synthetics/params")
 	sytheticsParamsPath.Post.CreateRef(schema, "create_param_response", "responses.200.content.application/json.schema")
 
+	// Add DELETE /api/synthetics/params which accepts {"ids":[...]} in the request body.
+	// This endpoint is supported from Kibana 8.12.0 onwards and is distinct from the
+	// documented POST /api/synthetics/params/_bulk_delete which is only available
+	// on Kibana >= 8.17.0. The operation id "delete-synthetics-params" is chosen to
+	// avoid collision with the existing "delete-parameters" (bulk_delete) operation.
+	sytheticsParamsPath.Delete = Map{
+		"operationId": "delete-synthetics-params",
+		"description": "Delete Synthetics parameters by id. Supported on Kibana >= 8.12.0.",
+		"requestBody": Map{
+			"required": true,
+			"content": Map{
+				"application/json": Map{
+					"schema": Map{
+						"type": "object",
+						"properties": Map{
+							"ids": Map{
+								"type":        "array",
+								"description": "An array of parameter IDs to delete.",
+								"items":       Map{"type": "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+		"responses": Map{
+			"200": Map{
+				"description": "OK",
+				"content": Map{
+					"application/json": Map{
+						"schema": Map{
+							"$ref": "#/components/schemas/SyntheticsDeleteParameterResult",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	schema.Components.Set("schemas.SyntheticsDeleteParameterResult", Map{
+		"type": "array",
+		"items": Map{
+			"type": "object",
+			"properties": Map{
+				"id":      Map{"type": "string"},
+				"deleted": Map{"type": "boolean"},
+			},
+		},
+	})
+
+	// The POST /api/synthetics/private_locations endpoint returns the same schema as
+	// Synthetics_getPrivateLocation (already a named component used by the GET endpoints).
+	// Point the POST 200 response at that component so the generated client uses the
+	// typed struct instead of map[string]interface{}.
+	syntheticsPrivateLocationsPath := schema.MustGetPath("/api/synthetics/private_locations")
+	syntheticsPrivateLocationsPath.Post.Set(
+		"responses.200.content.application/json.schema",
+		Map{"$ref": "#/components/schemas/Synthetics_getPrivateLocation"},
+	)
+
 	schema.Components.CreateRef(schema, "Data_views_data_view_response_object_inner", "schemas.Data_views_data_view_response_object.properties.data_view")
 	schema.Components.CreateRef(schema, "Data_views_sourcefilter_item", "schemas.Data_views_sourcefilters.items")
 	schema.Components.CreateRef(schema, "Data_views_runtimefieldmap_script", "schemas.Data_views_runtimefieldmap.properties.script")
@@ -950,45 +1043,67 @@ func fixGetSpacesParams(schema *Schema) {
 	schema.MustGetPath("/api/spaces/space").MustGetEndpoint("get").Delete("parameters.1.schema.anyOf")
 }
 
-func fixGetSyntheticsMonitorsParams(schema *Schema) {
-	schema.MustGetPath("/api/synthetics/monitors").MustGetEndpoint("get").Set("parameters.12.schema.oneOf.1.x-go-type", "[]GetSyntheticMonitorsParamsUseLogicalAndFor0")
-}
+// fixSpaceResponseSchemas defines strongly typed response schemas for the Kibana Spaces API.
+// The Kibana OAS does not include response body schemas for space endpoints; we add them here
+// so that oapi-codegen generates typed JSON200 fields on the response structs, making
+// the generated client usable without manual JSON unmarshalling.
+func fixSpaceResponseSchemas(schema *Schema) {
+	// Define a reusable space_response component schema matching the legacy KibanaSpace shape.
+	schema.Components.Set("schemas.space_response", Map{
+		"type": "object",
+		"properties": Map{
+			"id":          Map{"type": "string"},
+			"name":        Map{"type": "string"},
+			"description": Map{"type": "string"},
+			"disabledFeatures": Map{
+				"type":  "array",
+				"items": Map{"type": "string"},
+			},
+			"initials":  Map{"type": "string"},
+			"color":     Map{"type": "string"},
+			"imageUrl":  Map{"type": "string"},
+			"solution":  Map{"type": "string"},
+			"_reserved": Map{"type": "boolean"},
+		},
+		"required": Slice{"id", "name"},
+	})
 
-func fixGetMaintenanceWindowFindParams(schema *Schema) {
-	schema.MustGetPath("/api/maintenance_window/_find").MustGetEndpoint("get").Set("parameters.2.schema.anyOf.1.x-go-type", "[]GetMaintenanceWindowFindParamsStatus0")
-}
+	spaceRef := Map{"$ref": "#/components/schemas/space_response"}
 
-func fixGetStreamsAttachmentTypesParams(schema *Schema) {
-	schema.MustGetPath("/api/streams/{streamName}/attachments").MustGetEndpoint("get").Set("parameters.2.schema.anyOf.1.x-go-type", "[]GetStreamsStreamnameAttachmentsParamsAttachmentTypes0")
-}
+	// GET /api/spaces/space — returns array of spaces
+	getAll := schema.MustGetPath("/api/spaces/space").MustGetEndpoint("get")
+	getAll.Set("responses.200.content.application/json.schema", Map{
+		"type":  "array",
+		"items": spaceRef,
+	})
 
-func fixGetWorkflowsExecutionsParams(schema *Schema) {
-	get := schema.MustGetPath("/api/workflows/workflow/{workflowId}/executions").MustGetEndpoint("get")
-	get.Set("parameters.1.schema.anyOf.1.x-go-type", "[]GetWorkflowsWorkflowWorkflowidExecutionsParamsStatuses0")
-	get.Set("parameters.2.schema.anyOf.1.x-go-type", "[]GetWorkflowsWorkflowWorkflowidExecutionsParamsExecutionTypes0")
+	// POST /api/spaces/space — returns the created space
+	post := schema.MustGetPath("/api/spaces/space").MustGetEndpoint("post")
+	post.Set("responses.200.content.application/json.schema", spaceRef)
+
+	// GET /api/spaces/space/{id} — returns a single space
+	getOne := schema.MustGetPath("/api/spaces/space/{id}").MustGetEndpoint("get")
+	getOne.Set("responses.200.content.application/json.schema", spaceRef)
+
+	// PUT /api/spaces/space/{id} — returns the updated space
+	put := schema.MustGetPath("/api/spaces/space/{id}").MustGetEndpoint("put")
+	put.Set("responses.200.content.application/json.schema", spaceRef)
 }
 
 func fixDashboardPanelItemRefs(schema *Schema) {
-	dashboardPath := schema.MustGetPath("/api/dashboards")
+	schema.Components.Move("schemas.kbn-dashboard-data.properties.panels.items.anyOf.0.anyOf", "schemas.kbn-dashboard-data.properties.panels.items.anyOf.0.oneOf")
+	schema.Components.Set("schemas.kbn-dashboard-data.properties.panels.items.anyOf.0.discriminator", Map{"propertyName": "type"})
+	schema.Components.CreateRef(schema, "dashboard_panel_item", "schemas.kbn-dashboard-section.properties.panels.items")
+	schema.Components.CreateRef(schema, "dashboard_panel_item", "schemas.kbn-dashboard-data.properties.panels.items.anyOf.0")
+	schema.Components.CreateRef(schema, "dashboard_panels", "schemas.kbn-dashboard-data.properties.panels")
+
 	dashboardIDPath := schema.MustGetPath("/api/dashboards/{id}")
-
-	dashboardPath.Post.CreateRef(schema, "dashboard_panel_item", "requestBody.content.application/json.schema.properties.panels.items.anyOf.0")
-	dashboardPath.Post.CreateRef(schema, "dashboard_panel_section", "requestBody.content.application/json.schema.properties.panels.items.anyOf.1")
-	dashboardPath.Post.CreateRef(schema, "dashboard_panels", "requestBody.content.application/json.schema.properties.panels")
-
+	dashboardIDPath.Put.Move("requestBody.content.application/json.schema.properties.panels.items.anyOf.0.anyOf", "requestBody.content.application/json.schema.properties.panels.items.anyOf.0.oneOf")
+	dashboardIDPath.Put.Set("requestBody.content.application/json.schema.properties.panels.items.anyOf.0.discriminator", Map{"propertyName": "type"})
 	dashboardIDPath.Put.CreateRef(schema, "dashboard_panel_item", "requestBody.content.application/json.schema.properties.panels.items.anyOf.0")
-	dashboardIDPath.Put.CreateRef(schema, "dashboard_panel_section", "requestBody.content.application/json.schema.properties.panels.items.anyOf.1")
 	dashboardIDPath.Put.CreateRef(schema, "dashboard_panels", "requestBody.content.application/json.schema.properties.panels")
 
-	dashboardIDPath.Get.CreateRef(schema, "dashboard_panel_item", "responses.200.content.application/json.schema.properties.data.properties.panels.items.anyOf.0")
-	dashboardIDPath.Get.CreateRef(schema, "dashboard_panel_section", "responses.200.content.application/json.schema.properties.data.properties.panels.items.anyOf.1")
-	dashboardIDPath.Get.CreateRef(schema, "dashboard_panels", "responses.200.content.application/json.schema.properties.data.properties.panels")
-
-	schema.Components.Move("schemas.dashboard_panel_section.properties.panels.items.anyOf", "schemas.dashboard_panel_section.properties.panels.items.oneOf")
-	schema.Components.Set("schemas.dashboard_panel_section.properties.panels.items.discriminator", Map{"propertyName": "type"})
-	schema.Components.CreateRef(schema, "dashboard_panel_item", "schemas.dashboard_panel_section.properties.panels.items")
-
-	const panelTypePrefix = "kbn-dashboard-panel-"
+	const panelTypePrefix = "kbn-dashboard-panel-type-"
 	panelOneOf := schema.Components.MustGetSlice("schemas.dashboard_panel_item.oneOf")
 	panelTypeMapping := Map{}
 	for _, entry := range panelOneOf {
@@ -1176,12 +1291,6 @@ func transformFleetPaths(schema *Schema) {
 		},
 	})
 
-	for _, typ := range []string{"elasticsearch", "remote_elasticsearch", "logstash", "kafka"} {
-		// strict_dynamic_mapping_exception: [1:345] mapping set to strict, dynamic introduction of [id] within [ingest-outputs] is not allowed"
-		// See: https://github.com/elastic/kibana/issues/197155
-		schema.Components.MustDelete(fmt.Sprintf("schemas.update_output_%s.properties.id", typ))
-	}
-
 	// Package policies
 	// https://github.com/elastic/kibana/blob/main/x-pack/plugins/fleet/common/types/models/package_policy.ts
 	// https://github.com/elastic/kibana/blob/main/x-pack/plugins/fleet/common/types/rest_spec/package_policy.ts
@@ -1263,6 +1372,17 @@ func transformOmitEmptyNullable(schema *Schema) {
 	}
 }
 
+func removeAnyOfWhenOneOfPresent(key string, node Map) {
+	if node.Has("anyOf") && node.Has("oneOf") {
+		delete(node, "anyOf")
+	}
+}
+
+func transformRemoveAnyOfWhenOneOfPresent(schema *Schema) {
+	componentSchemas := schema.Components.MustGetMap("schemas")
+	componentSchemas.Iterate(removeAnyOfWhenOneOfPresent)
+}
+
 // transformRemoveExamples removes all examples.
 func transformRemoveExamples(schema *Schema) {
 	deleteExampleFn := func(key string, node Map) {
@@ -1326,7 +1446,174 @@ func transformRemoveUnusedComponents(schema *Schema) {
 	}
 }
 
+func fixAlertingRuleBody(schema *Schema) {
+	postEndpoint := schema.MustGetPath("/api/alerting/rule/{id}").MustGetEndpoint("post")
+	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Body", "requestBody.content.application/json.schema.anyOf.0")
+	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Body_Generic", "requestBody.content.application/json.schema.anyOf.1")
+	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Body_Union", "requestBody.content.application/json.schema")
+}
+
 func fixAlertingRuleParams(schema *Schema) {
 	postEndpoint := schema.MustGetPath("/api/alerting/rule/{id}").MustGetEndpoint("post")
-	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Params", "requestBody.content.application/json.schema.properties.params")
+	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Params", "requestBody.content.application/json.schema.anyOf.1.properties.params")
+}
+
+func fixSyntheticsMonitorModels(schema *Schema) {
+	monitorsPath := schema.MustGetPath("/api/synthetics/monitors")
+	monitorPath := schema.MustGetPath("/api/synthetics/monitors/{id}")
+	requestDescription := "The request body should contain monitor attributes. The required and default fields differ depending on the monitor type."
+
+	monitorsPath.Post.Set("requestBody.content.application/json.schema.description", requestDescription)
+	monitorPath.Put.Set("requestBody.content.application/json.schema.description", requestDescription)
+	monitorsPath.Post.Set("requestBody.content.application/json.schema.type", "object")
+	monitorPath.Put.Set("requestBody.content.application/json.schema.type", "object")
+	monitorsPath.Post.CreateRef(schema, "synthetics_monitor_request", "requestBody.content.application/json.schema")
+	monitorPath.Put.CreateRef(schema, "synthetics_monitor_request", "requestBody.content.application/json.schema")
+
+	schema.Components.Set("schemas.synthetics_monitor_alert_status", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"enabled": Map{"type": "boolean"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.synthetics_monitor_alert", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"status": Map{"$ref": "#/components/schemas/synthetics_monitor_alert_status"},
+			"tls":    Map{"$ref": "#/components/schemas/synthetics_monitor_alert_status"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.synthetics_ssl_config", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"certificate": Map{"type": "string"},
+			"certificate_authorities": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"key":            Map{"type": "string"},
+			"key_passphrase": Map{"type": "string"},
+			"supported_protocols": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"verification_mode": Map{"type": "string"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.synthetics_monitor_schedule", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"number": Map{"type": "string"},
+			"unit":   Map{"type": "string"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.geo_pos", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"lat": Map{"type": "number"},
+			"lon": Map{"type": "number"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.synthetics_location_config", Map{
+		"additionalProperties": false,
+		"properties": Map{
+			"geo":              Map{"$ref": "#/components/schemas/geo_pos"},
+			"id":               Map{"type": "string"},
+			"isServiceManaged": Map{"type": "boolean"},
+			"label":            Map{"type": "string"},
+		},
+		"type": "object",
+	})
+	schema.Components.Set("schemas.synthetics_monitor", Map{
+		"additionalProperties": true,
+		"properties": Map{
+			"alert":               Map{"$ref": "#/components/schemas/synthetics_monitor_alert"},
+			"check":               Map{"type": "object"},
+			"check.receive":       Map{"type": "string"},
+			"check.send":          Map{"type": "string"},
+			"config_id":           Map{"type": "string"},
+			"enabled":             Map{"type": "boolean"},
+			"host":                Map{"type": "string"},
+			"id":                  Map{"type": "string"},
+			"ignore_https_errors": Map{"type": "boolean"},
+			"inline_script":       Map{"type": "string"},
+			"ipv4":                Map{"type": "boolean"},
+			"ipv6":                Map{"type": "boolean"},
+			"labels": Map{
+				"additionalProperties": Map{"type": "string"},
+				"type":                 "object",
+			},
+			"locations": Map{
+				"items": Map{"$ref": "#/components/schemas/synthetics_location_config"},
+				"type":  "array",
+			},
+			"max_redirects": Map{"oneOf": Slice{Map{"type": "string"}, Map{"type": "number"}}},
+			"mode":          Map{"type": "string"},
+			"name":          Map{"type": "string"},
+			"namespace":     Map{"type": "string"},
+			"params":        Map{"type": "object"},
+			"password":      Map{"type": "string"},
+			"playwright_options": Map{
+				"type": "object",
+			},
+			"proxy_headers":            Map{"type": "object"},
+			"proxy_url":                Map{"type": "string"},
+			"proxy_use_local_resolver": Map{"type": "boolean"},
+			"response":                 Map{"type": "object"},
+			"retest_on_failure":        Map{"type": "boolean"},
+			"schedule":                 Map{"$ref": "#/components/schemas/synthetics_monitor_schedule"},
+			"screenshots":              Map{"type": "string"},
+			"service.name":             Map{"type": "string"},
+			"ssl.certificate":          Map{"type": "string"},
+			"ssl.certificate_authorities": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"ssl.key":            Map{"type": "string"},
+			"ssl.key_passphrase": Map{"type": "string"},
+			"ssl.supported_protocols": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"ssl.verification_mode": Map{"type": "string"},
+			"synthetics_args": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"tags": Map{
+				"items": Map{"type": "string"},
+				"type":  "array",
+			},
+			"timeout": Map{"oneOf": Slice{Map{"type": "string"}, Map{"type": "number"}}},
+			"type": Map{
+				"enum": Slice{"http", "tcp", "icmp", "browser"},
+				"type": "string",
+			},
+			"url":      Map{"type": "string"},
+			"username": Map{"type": "string"},
+			"wait":     Map{"oneOf": Slice{Map{"type": "string"}, Map{"type": "number"}}},
+		},
+		"type": "object",
+	})
+
+	schema.Components.Set("schemas.Synthetics_commonMonitorFields.properties.alert", Map{"$ref": "#/components/schemas/synthetics_monitor_alert"})
+	schema.Components.Set("schemas.Synthetics_commonMonitorFields.properties.params", Map{"type": "object"})
+	schema.Components.Set("schemas.Synthetics_icmpMonitorFields.allOf.1.properties.wait", Map{"oneOf": Slice{Map{"type": "string"}, Map{"type": "number"}}})
+	schema.Components.Set("schemas.Synthetics_httpMonitorFields.allOf.1.properties.max_redirects", Map{"oneOf": Slice{Map{"type": "string"}, Map{"type": "number"}}})
+	schema.Components.Set("schemas.Synthetics_httpMonitorFields.allOf.1.properties.ssl", Map{"$ref": "#/components/schemas/synthetics_ssl_config"})
+	schema.Components.Set("schemas.Synthetics_tcpMonitorFields.allOf.1.properties.ssl", Map{"$ref": "#/components/schemas/synthetics_ssl_config"})
+
+	responseRef := Map{"$ref": "#/components/schemas/synthetics_monitor"}
+	monitorsPath.Post.Set("responses.200.content.application/json.schema", responseRef)
+	monitorPath.Get.Set("responses.200.content.application/json.schema", responseRef)
+}
+
+func fixSyntheticsMonitorParams(schema *Schema) {
+	getEndpoint := schema.MustGetPath("/api/synthetics/monitors").MustGetEndpoint("get")
+	getEndpoint.Set("parameters.12.schema", getEndpoint.MustGetMap("parameters.12.schema.oneOf.0"))
 }

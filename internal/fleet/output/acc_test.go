@@ -42,7 +42,7 @@ import (
 
 var minVersionOutput = version.Must(version.NewVersion("8.6.0"))
 
-//go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/create/output.tf
+//go:embed testdata/TestAccResourceOutputElasticsearchFromSDK/create/main.tf
 var sdkCreateTestConfig string
 
 func TestAccResourceOutputElasticsearchFromSDK(t *testing.T) {
@@ -151,7 +151,7 @@ func TestAccResourceOutputElasticsearch(t *testing.T) {
 	})
 }
 
-//go:embed testdata/TestAccResourceOutputLogstashFromSDK/create/output.tf
+//go:embed testdata/TestAccResourceOutputLogstashFromSDK/create/main.tf
 var logstashSDKCreateTestConfig string
 
 func TestAccResourceOutputLogstashFromSDK(t *testing.T) {
@@ -360,7 +360,7 @@ func TestAccResourceOutputKafkaComplex(t *testing.T) {
 }
 
 func TestAccResourceOutputRemoteElasticsearch(t *testing.T) {
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 	require.NoError(t, err)
 	kibanaOapiClient, err := client.GetKibanaOapiClient()
 	require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestAccResourceOutputRemoteElasticsearchValidation(t *testing.T) {
 }
 
 func checkResourceOutputDestroy(s *terraform.State) error {
-	client, err := clients.NewAcceptanceTestingClient()
+	client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 	if err != nil {
 		return err
 	}

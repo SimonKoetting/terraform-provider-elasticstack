@@ -38,15 +38,25 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+<<<<<<< tamper_protection
 	planWantsTamperProtection := planModel.IsProtected
 
 	client, err := r.client.GetFleetClient()
+=======
+	client, diags := r.client.GetKibanaClient(ctx, planModel.KibanaConnection)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	fleetClient, err := client.GetFleetClient()
+>>>>>>> main
 	if err != nil {
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}
 
-	feat, diags := r.buildFeatures(ctx)
+	feat, diags := r.buildFeatures(ctx, client)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -69,7 +79,7 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	sysMonitoring := planModel.SysMonitoring.ValueBool()
-	policy, diags := fleet.CreateAgentPolicy(ctx, client, body, sysMonitoring, spaceID)
+	policy, diags := fleet.CreateAgentPolicy(ctx, fleetClient, body, sysMonitoring, spaceID)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -84,7 +94,7 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		var readPolicy *kbapi.AgentPolicy
 		var getDiags diag.Diagnostics
 
-		readPolicy, getDiags = fleet.GetAgentPolicy(ctx, client, policy.Id, spaceID)
+		readPolicy, getDiags = fleet.GetAgentPolicy(ctx, fleetClient, policy.Id, spaceID)
 
 		resp.Diagnostics.Append(getDiags...)
 		if resp.Diagnostics.HasError() {
