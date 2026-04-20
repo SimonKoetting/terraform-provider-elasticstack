@@ -40,7 +40,7 @@ Environment variables consumed by underlying tools (for example Terraform loggin
 - **Docker & HTTP helpers:** `docker-elasticsearch`, `docker-kibana`, `docker-fleet`, `docker-clean`, `copy-kibana-ca`, `set-kibana-password`, `setup-synthetics`, `create-es-api-key`, `create-es-bearer-token`, `setup-kibana-fleet`
 - **Lint, format, docs, OpenSpec:** `tools`, `golangci-lint`, `lint`, `check-lint`, `fmt`, `check-fmt`, `docs-generate`, `workflow-generate`, `workflow-test`, `check-workflows`, `check-docs`, `setup-openspec`, `check-openspec`, `setup`
 - **Release & maintenance:** `release-snapshot`, `release-no-publish`, `release`, `check-sign-release`, `check-publish-release`, `release-notes`, `renovate-post-upgrade`, `notice`
-- **Codegen:** `gen`, `generate-slo-client`, `generate-clients`
+- **Codegen:** `gen`, `generate-clients`
 ## Requirements
 ### Requirement: Default goal and help (REQ-001–REQ-002)
 
@@ -130,13 +130,20 @@ The `build-ci` target SHALL produce the provider executable for the current plat
 
 ### Requirement: Unit tests (REQ-022)
 
-The `test` target SHALL run unit tests for `TEST` with a bounded wall-clock timeout, fixed `-count`, and repository-chosen parallelism; extra arguments MAY be supplied via `TESTARGS`.
+The `test` target SHALL run all repository unit-style test suites. It SHALL run Go unit tests for `TEST` with a bounded wall-clock timeout, fixed `-count`, and repository-chosen parallelism; extra arguments MAY be supplied via `TESTARGS`. It SHALL also run workflow source generation tests and hook JavaScript tests so `make test` provides a single entry point for unit-level verification.
 
-#### Scenario: Unit tests
+#### Scenario: Go unit tests
 
 - GIVEN `make test`
-- WHEN tests complete
-- THEN packages under `TEST` SHALL have been executed under those constraints
+- WHEN the Go unit-test portion runs
+- THEN packages under `TEST` SHALL have been executed under the configured timeout, count, and parallelism constraints
+
+#### Scenario: Aggregate unit-style test coverage
+
+- GIVEN `make test`
+- WHEN the target completes successfully
+- THEN `workflow-test` SHALL have been executed
+- AND hook JavaScript tests SHALL have been executed
 
 ### Requirement: Acceptance tests (REQ-023–REQ-024)
 
@@ -216,7 +223,7 @@ The `copy-kibana-ca` target SHALL copy the Kibana TLS CA certificate from the ru
 
 ### Requirement: Documentation, workflow, and code generation (REQ-038–REQ-042)
 
-The `docs-generate` target SHALL regenerate Terraform provider website/markdown documentation using **HashiCorp `terraform-plugin-docs`** (`tfplugindocs`) for provider name `terraform-provider-elasticstack`. The `workflow-generate` target SHALL regenerate the checked-in GitHub workflow artifacts from the repository-authored workflow sources, and it SHALL run only when explicitly requested. Aggregate targets such as `gen`, `lint`, and `build` SHALL NOT depend on `workflow-generate`. The `workflow-test` target SHALL run the repository tests that cover workflow source generation. The `check-workflows` target SHALL verify that generated workflow artifacts are up to date without regenerating them. The `gen` target SHALL run documentation generation and `go generate` for the repository.
+The `docs-generate` target SHALL regenerate Terraform provider website/markdown documentation using **HashiCorp `terraform-plugin-docs`** (`tfplugindocs`) for provider name `terraform-provider-elasticstack`. The `workflow-generate` target SHALL regenerate the checked-in GitHub workflow artifacts from the repository-authored workflow sources, and it SHALL run only when explicitly requested. Aggregate targets such as `gen`, `lint`, and `build` SHALL NOT depend on `workflow-generate`. The `workflow-test` target SHALL run the repository tests that cover workflow source generation. The `hook-test` target SHALL run `node --test .agents/hooks/*.test.mjs`. The `check-workflows` target SHALL verify that generated workflow artifacts are up to date without regenerating them. The `gen` target SHALL run documentation generation and `go generate` for the repository.
 
 #### Scenario: Docs generation
 
@@ -229,6 +236,12 @@ The `docs-generate` target SHALL regenerate Terraform provider website/markdown 
 - GIVEN `make workflow-generate`
 - WHEN it succeeds
 - THEN the checked-in workflow artifacts SHALL be regenerated from the repository-authored workflow sources
+
+#### Scenario: Hook test target
+
+- GIVEN `make hook-test`
+- WHEN the target runs
+- THEN Node's test runner SHALL execute `.agents/hooks/*.test.mjs`
 
 #### Scenario: Workflow drift check without regeneration
 
@@ -346,13 +359,63 @@ The `release-notes` target SHALL print the body of the `## [Unreleased]` section
 - WHEN `make release-notes` runs
 - THEN standard output SHALL contain only the Unreleased section body
 
-### Requirement: SLO client generation (REQ-064–REQ-065)
+### Requirement: Consolidated Kibana client codegen (`generate-clients`)
 
-The `generate-slo-client` target SHALL regenerate the Go client under `generated/slo` from the repository’s SLO OpenAPI specification using the code generation toolchain wired in the Makefile, then format the generated Go code. The `generate-clients` target SHALL regenerate the SLO client and run the general codegen path (`gen`).
+The `generate-clients` target SHALL run the repository’s general Kibana/OpenAPI codegen path (`gen`) and SHALL NOT invoke a separate OpenAPI generation step that writes under `generated/slo`. The Makefile SHALL NOT define a `generate-slo-client` target.
 
-#### Scenario: Regenerate SLO client
+#### Scenario: generate-clients does not produce generated/slo
 
-- GIVEN Docker is available and `make generate-slo-client` runs successfully
-- WHEN generation finishes
-- THEN `generated/slo` SHALL contain formatted Go sources suitable for commit
+- **WHEN** `make generate-clients` completes successfully on a clean checkout after this change
+- **THEN** the recipe SHALL NOT run OpenAPI generation dedicated to a `generated/slo` package path
+
+#### Scenario: Deprecated SLO generator target absent
+
+- **WHEN** a contributor inspects the root Makefile for SLO-specific client generation
+- **THEN** there SHALL be no `generate-slo-client` phony target or equivalent recipe that populated `generated/slo`
+
+### Requirement: Custom lint performance measurement target
+
+The Makefile SHALL provide a `lint-perf` target that captures isolated performance data for the repository's custom golangci analyzers without relying on aggregate `make lint` wall time. The target SHALL build or reuse the repository-local custom golangci binary, run `esclienthelper` and `acctestconfigdirlint` individually against `./...` with fixed single-run concurrency, and write timing plus CPU, memory, and trace artifacts to a repo-local output directory for each run.
+
+#### Scenario: Isolated custom linter profiles
+
+- **GIVEN** a contributor runs `make lint-perf`
+- **WHEN** the target invokes the custom golangci binary
+- **THEN** `esclienthelper` and `acctestconfigdirlint` SHALL be measured in isolated runs rather than only as part of the full default linter set
+- **AND** each run SHALL emit timing/profile artifacts under a repo-local output directory
+
+#### Scenario: Repository-aligned scope and entrypoint
+
+- **GIVEN** `make lint-perf` measures a custom analyzer
+- **WHEN** it invokes golangci-lint for that analyzer
+- **THEN** it SHALL use the repository's custom golangci binary and the repository-wide package scope `./...`
+- **AND** it SHALL keep concurrency fixed so repeated comparisons use a stable execution mode
+
+### Requirement: Custom analyzer benchmark capture
+
+The `lint-perf` target SHALL also run repository-local Go benchmarks for the custom analyzer packages and capture their outputs alongside the isolated golangci-lint measurements. This benchmark capture SHALL use the analyzer packages under `analysis/` so future optimizer changes can compare targeted analyzer workloads in addition to full-repository isolated runs.
+
+#### Scenario: Analyzer benchmark outputs
+
+- **GIVEN** a contributor runs `make lint-perf`
+- **WHEN** the measurement target completes successfully
+- **THEN** the output directory SHALL contain benchmark output for the custom analyzer packages in addition to the isolated golangci-lint profile artifacts
+
+### Requirement: Release preparation workflow dispatch target
+The Makefile SHALL provide a maintainer-facing target that dispatches the release preparation GitHub workflow through `gh workflow run` instead of performing release mutation locally. The target SHALL accept a bump-mode input that supports `patch`, `minor`, and `major`, SHALL default that input to `patch`, and SHALL reject unsupported bump values before invoking `gh`.
+
+#### Scenario: Default bump input dispatches patch release preparation
+- **GIVEN** a maintainer runs the release preparation Make target without overriding the bump mode
+- **WHEN** the target dispatches the workflow
+- **THEN** it SHALL invoke `gh workflow run` using `patch` as the bump input
+
+#### Scenario: Unsupported bump value fails before dispatch
+- **GIVEN** a maintainer supplies a bump value other than `patch`, `minor`, or `major`
+- **WHEN** the Make target validates its inputs
+- **THEN** it SHALL fail before dispatching the workflow
+
+#### Scenario: Make target does not duplicate release logic
+- **GIVEN** a maintainer uses the release preparation Make target
+- **WHEN** the target runs successfully
+- **THEN** it SHALL only dispatch the GitHub workflow rather than editing `Makefile`, editing `CHANGELOG.md`, creating branches, or opening pull requests locally
 

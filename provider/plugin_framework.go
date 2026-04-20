@@ -43,6 +43,7 @@ import (
 	"github.com/elastic/terraform-provider-elasticstack/internal/elasticsearch/security/systemuser"
 	"github.com/elastic/terraform-provider-elasticstack/internal/elasticsearch/security/user"
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/agentdownloadsource"
+	"github.com/elastic/terraform-provider-elasticstack/internal/elasticsearch/watcher/watch"
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/agentpolicy"
 	elasticdefendintegrationpolicy "github.com/elastic/terraform-provider-elasticstack/internal/fleet/elastic_defend_integration_policy"
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/enrollmenttokens"
@@ -52,13 +53,14 @@ import (
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/output"
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/outputds"
 	"github.com/elastic/terraform-provider-elasticstack/internal/fleet/serverhost"
+	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/agentbuilderagent"
+	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/agentbuildertool"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/agentbuilderworkflow"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/alertingrule"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/connectors"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/dashboard"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/dataview"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/defaultdataview"
-	exportagentbuilderworkflow "github.com/elastic/terraform-provider-elasticstack/internal/kibana/exportagentbuilder/workflow"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/exportsavedobjects"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/import_saved_objects"
 	"github.com/elastic/terraform-provider-elasticstack/internal/kibana/maintenance_window"
@@ -128,14 +130,14 @@ func (p *Provider) Configure(ctx context.Context, req fwprovider.ConfigureReques
 		return
 	}
 
-	client, diags := clients.NewAPIClientFromFramework(ctx, cfg, p.version)
+	factory, diags := clients.NewProviderClientFactoryFromFramework(ctx, cfg, p.version)
 	res.Diagnostics.Append(diags...)
 	if res.Diagnostics.HasError() {
 		return
 	}
 
-	res.DataSourceData = client
-	res.ResourceData = client
+	res.DataSourceData = factory
+	res.ResourceData = factory
 }
 
 func (p *Provider) DataSources(ctx context.Context) []func() datasource.DataSource {
@@ -161,7 +163,7 @@ func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 func (p *Provider) resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		agentconfiguration.NewAgentConfigurationResource,
-		func() resource.Resource { return &importsavedobjects.Resource{} },
+		importsavedobjects.NewResource,
 		alertingrule.NewResource,
 		dataview.NewResource,
 		defaultdataview.NewResource,
@@ -174,6 +176,8 @@ func (p *Provider) resources(_ context.Context) []func() resource.Resource {
 		ilm.NewResource,
 		func() resource.Resource { return &connectors.Resource{} },
 		agentpolicy.NewResource,
+		agentbuilderagent.NewResource,
+		agentbuildertool.NewResource,
 		agentbuilderworkflow.NewResource,
 		integration.NewResource,
 		integrationpolicy.NewResource,
@@ -185,6 +189,7 @@ func (p *Provider) resources(_ context.Context) []func() resource.Resource {
 		securityuser.NewUserResource,
 		role.NewRoleResource,
 		inferenceendpoint.NewInferenceEndpointResource,
+		watch.NewWatchResource,
 		script.NewScriptResource,
 		maintenancewindow.NewResource,
 		enrich.NewEnrichPolicyResource,
@@ -218,7 +223,9 @@ func (p *Provider) dataSources(_ context.Context) []func() datasource.DataSource
 	return []func() datasource.DataSource{
 		indices.NewDataSource,
 		spaces.NewDataSource,
-		exportagentbuilderworkflow.NewDataSource,
+		agentbuilderagent.NewDataSource,
+		agentbuildertool.NewDataSource,
+		agentbuilderworkflow.NewDataSource,
 		exportsavedobjects.NewDataSource,
 		enrollmenttokens.NewDataSource,
 		integrationds.NewDataSource,

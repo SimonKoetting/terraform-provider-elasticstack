@@ -3,9 +3,8 @@ module github.com/elastic/terraform-provider-elasticstack
 go 1.26.1
 
 require (
-	github.com/disaster37/go-kibana-rest/v8 v8.5.0
-	github.com/elastic/elastic-transport-go/v8 v8.10.0
-	github.com/elastic/go-elasticsearch/v8 v8.19.3
+	github.com/elastic/elastic-transport-go/v8 v8.11.0
+	github.com/elastic/go-elasticsearch/v8 v8.19.4
 	github.com/google/go-github/v84 v84.0.0
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.6.0
@@ -19,14 +18,14 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-log v0.10.0
-	github.com/hashicorp/terraform-plugin-mux v0.23.0
+	github.com/hashicorp/terraform-plugin-mux v0.23.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.40.0
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
-	github.com/oapi-codegen/runtime v1.3.1
+	github.com/oapi-codegen/runtime v1.4.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/tools v0.43.0
+	golang.org/x/tools v0.44.0
 )
 
 require (
@@ -167,7 +166,6 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20250513223454-5ece0c5aa76c // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elastic/terraform-provider-elasticstack/analysis/acctestconfigdirlintplugin v0.0.0
-	github.com/elastic/terraform-provider-elasticstack/analysis/esclienthelperplugin v0.0.0
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
@@ -207,7 +205,6 @@ require (
 	github.com/go-openapi/swag/yamlutils v0.25.4 // indirect
 	github.com/go-openapi/validate v0.25.1 // indirect
 	github.com/go-restruct/restruct v1.2.0-alpha // indirect
-	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -321,7 +318,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/polydawn/refmt v0.89.1-0.20221221234430-40501e09de1f // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -395,14 +392,14 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gocloud.dev v0.45.0 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
-	golang.org/x/mod v0.34.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.260.0 // indirect
@@ -424,8 +421,6 @@ require (
 	software.sslmate.com/src/go-pkcs12 v0.6.0 // indirect
 )
 
-replace github.com/disaster37/go-kibana-rest/v8 => ./libs/go-kibana-rest
-
 tool (
 	github.com/goreleaser/goreleaser/v2
 	github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
@@ -434,7 +429,5 @@ tool (
 	go.uber.org/mock/mockgen
 	gotest.tools/gotestsum
 )
-
-replace github.com/elastic/terraform-provider-elasticstack/analysis/esclienthelperplugin => ./analysis/esclienthelperplugin
 
 replace github.com/elastic/terraform-provider-elasticstack/analysis/acctestconfigdirlintplugin => ./analysis/acctestconfigdirlintplugin

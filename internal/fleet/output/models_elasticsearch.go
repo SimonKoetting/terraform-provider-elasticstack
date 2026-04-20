@@ -52,6 +52,8 @@ func (model *outputModel) fromAPIElasticsearchModel(ctx context.Context, data *k
 		model.SpaceIDs = types.SetNull(types.StringType)
 	}
 
+	clearRemoteElasticsearchOnlyFields(model)
+
 	return
 }
 
@@ -71,7 +73,7 @@ func (model outputModel) toAPICreateElasticsearchModel(ctx context.Context) (kba
 		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueString(),
-		Ssl:                  ssl.toCreateElasticsearch(),
+		Ssl:                  ssl.toAPI(),
 	}
 
 	var union kbapi.NewOutputUnion
@@ -90,7 +92,7 @@ func (model outputModel) toAPIUpdateElasticsearchModel(ctx context.Context) (kba
 		return kbapi.UpdateOutputUnion{}, diags
 	}
 	body := kbapi.UpdateOutputElasticsearch{
-		Type: func() *kbapi.UpdateOutputElasticsearchType {
+		Type: func() *kbapi.KibanaHTTPAPIsUpdateOutputElasticsearchType {
 			outputType := kbapi.Elasticsearch
 			return &outputType
 		}(),
@@ -101,7 +103,7 @@ func (model outputModel) toAPIUpdateElasticsearchModel(ctx context.Context) (kba
 		IsDefault:            model.DefaultIntegrations.ValueBoolPointer(),
 		IsDefaultMonitoring:  model.DefaultMonitoring.ValueBoolPointer(),
 		Name:                 model.Name.ValueStringPointer(),
-		Ssl:                  ssl.toUpdateElasticsearch(),
+		Ssl:                  ssl.toAPI(),
 	}
 
 	var union kbapi.UpdateOutputUnion

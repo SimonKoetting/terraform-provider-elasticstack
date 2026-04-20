@@ -19,7 +19,7 @@ package integration_test
 
 import (
 	"context"
-	"fmt"
+	_ "embed"
 	"regexp"
 	"testing"
 
@@ -40,6 +40,12 @@ var (
 	minVersionIntegrationPolicy = version.Must(version.NewVersion("8.10.0"))
 )
 
+//go:embed testdata/TestAccResourceIntegrationFromSDK/main.tf
+var testAccResourceIntegrationFromSDKConfig string
+
+//go:embed testdata/TestAccResourceIntegrationFrom0_13_1/sdk/main.tf
+var testAccResourceIntegrationFrom013SDKConfig string
+
 func TestAccResourceIntegrationFromSDK(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() { acctest.PreCheck(t) },
@@ -52,19 +58,7 @@ func TestAccResourceIntegrationFromSDK(t *testing.T) {
 					},
 				},
 				SkipFunc: versionutils.CheckIfVersionIsUnsupported(minVersionIntegration),
-				Config: `
-provider "elasticstack" {
-  elasticsearch {}
-  kibana {}
-}
-
-resource "elasticstack_fleet_integration" "test_integration" {
-  name         = "tcp"
-  version      = "1.16.0"
-  force        = true
-  skip_destroy = true
-}
-`,
+				Config:   testAccResourceIntegrationFromSDKConfig,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_fleet_integration.test_integration", "name", "tcp"),
 					resource.TestCheckResourceAttr("elasticstack_fleet_integration.test_integration", "version", "1.16.0"),
@@ -173,7 +167,7 @@ func TestAccResourceIntegrationDeleted(t *testing.T) {
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
 				// Force uninstall the integration
 				PreConfig: func() {
-					client, err := clients.NewAcceptanceTestingClient()
+					client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 					require.NoError(t, err)
 
 					fleetClient, err := client.GetFleetClient()
@@ -217,7 +211,7 @@ func TestAccResourceIntegration_ExternalChange(t *testing.T) {
 						return
 					}
 
-					client, err := clients.NewAcceptanceTestingClient()
+					client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 					require.NoError(t, err)
 
 					fleetClient, err := client.GetFleetClient()
@@ -246,7 +240,7 @@ func TestAccResourceIntegration_ExternalChange(t *testing.T) {
 						return
 					}
 
-					client, err := clients.NewAcceptanceTestingClient()
+					client, err := clients.NewAcceptanceTestingKibanaScopedClient()
 					require.NoError(t, err)
 
 					fleetClient, err := client.GetFleetClient()
@@ -327,7 +321,10 @@ func TestAccResourceIntegrationFrom0_13_1(t *testing.T) {
 					},
 				},
 				SkipFunc: versionutils.CheckIfVersionIsUnsupported(minVersionIntegration),
-				Config:   testAccResourceIntegrationV0(spaceID),
+				Config:   testAccResourceIntegrationFrom013SDKConfig,
+				ConfigVariables: config.Variables{
+					"space_id": config.StringVariable(spaceID),
+				},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_fleet_integration.test_integration_upgrade", "name", "tcp"),
 					resource.TestCheckResourceAttr("elasticstack_fleet_integration.test_integration_upgrade", "version", "1.16.0"),
@@ -348,26 +345,4 @@ func TestAccResourceIntegrationFrom0_13_1(t *testing.T) {
 			},
 		},
 	})
-}
-
-func testAccResourceIntegrationV0(spaceID string) string {
-	return fmt.Sprintf(`
-provider "elasticstack" {
-  elasticsearch {}
-  kibana {}
-}
-
-resource "elasticstack_kibana_space" "test" {
-  space_id = "%s"
-  name     = "Test Space"
-}
-
-resource "elasticstack_fleet_integration" "test_integration_upgrade" {
-  name         = "tcp"
-  version      = "1.16.0"
-  space_ids    = [elasticstack_kibana_space.test.space_id, "default"]
-  force        = true
-  skip_destroy = true
-}
-`, spaceID)
 }
