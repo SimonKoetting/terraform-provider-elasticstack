@@ -60,7 +60,7 @@ func (r *integrationResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(diags...)
 }
 
-// fleetPackageInstalled mirrors Fleet/EPM semantics for whether a package is installed.
+// fleetPackageInstalled determines whether Fleet reports a package as fully installed.
 // Newer Kibana versions may populate InstallationInfo.install_status instead of (or in addition to) status,
 // and status casing can vary.
 func fleetPackageInstalled(pkg *kbapi.PackageInfo) bool {
@@ -71,9 +71,6 @@ func fleetPackageInstalled(pkg *kbapi.PackageInfo) bool {
 		switch pkg.InstallationInfo.InstallStatus {
 		case kbapi.PackageInfoInstallationInfoInstallStatusInstalled:
 			return true
-		case kbapi.PackageInfoInstallationInfoInstallStatusInstalling:
-			// Avoid flapping: installation may still be in progress right after apply.
-			return true
 		case kbapi.PackageInfoInstallationInfoInstallStatusInstallFailed:
 			return false
 		}
@@ -81,6 +78,5 @@ func fleetPackageInstalled(pkg *kbapi.PackageInfo) bool {
 	if pkg.Status != nil {
 		return strings.EqualFold(*pkg.Status, "installed")
 	}
-	// Older responses: GET succeeded but omitted status/installation info.
-	return pkg.InstallationInfo == nil
+	return false
 }
