@@ -36,12 +36,18 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		return
 	}
 
-	client, err := r.client.GetFleetClient()
+	apiClient, apiClientDiags := r.client.GetKibanaClient(ctx, state.KibanaConnection)
+	resp.Diagnostics.Append(apiClientDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client, err := apiClient.GetFleetClient()
 	if err != nil {
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
 	}
-	resp.Diagnostics.Append(r.assertVersionSupported(ctx)...)
+	resp.Diagnostics.Append(r.assertVersionSupported(ctx, apiClient)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

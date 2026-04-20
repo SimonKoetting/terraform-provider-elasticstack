@@ -38,7 +38,7 @@ var (
 
 // Resource implements the Fleet Agent Download Source resource.
 type Resource struct {
-	client *clients.KibanaScopedClient
+	client *clients.ProviderClientFactory
 }
 
 // NewResource is a helper function to simplify the provider implementation.
@@ -52,7 +52,7 @@ func (r *Resource) Configure(_ context.Context, req resource.ConfigureRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	r.client = clients.NewKibanaScopedClientFromFactory(factory)
+	r.client = factory
 }
 
 func (r *Resource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

@@ -25,13 +25,14 @@ import (
 )
 
 type model struct {
-	ID       types.String `tfsdk:"id"`
-	SourceID types.String `tfsdk:"source_id"`
-	Name     types.String `tfsdk:"name"`
-	Host     types.String `tfsdk:"host"`
-	Default  types.Bool   `tfsdk:"default"`
-	ProxyID  types.String `tfsdk:"proxy_id"`
-	SpaceIDs types.Set    `tfsdk:"space_ids"` // > string
+	ID               types.String `tfsdk:"id"`
+	SourceID         types.String `tfsdk:"source_id"`
+	Name             types.String `tfsdk:"name"`
+	Host             types.String `tfsdk:"host"`
+	Default          types.Bool   `tfsdk:"default"`
+	ProxyID          types.String `tfsdk:"proxy_id"`
+	SpaceIDs         types.Set    `tfsdk:"space_ids"`         // > string
+	KibanaConnection types.List   `tfsdk:"kibana_connection"` // > provider schema connection block
 }
 
 func (m model) toAPICreateModel(_ context.Context) kbapi.PostFleetAgentDownloadSourcesJSONRequestBody {

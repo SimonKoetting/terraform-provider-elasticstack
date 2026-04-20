@@ -20,6 +20,7 @@ package agentdownloadsource
 import (
 	"context"
 
+	providerschema "github.com/elastic/terraform-provider-elasticstack/internal/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -77,6 +78,9 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 					setplanmodifier.UseStateForUnknown(),
 				},
 			},
+		},
+		Blocks: map[string]schema.Block{
+			"kibana_connection": providerschema.GetKbFWConnectionBlock(),
 		},
 	}
 }

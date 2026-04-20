@@ -25,7 +25,6 @@ import (
 	"go/token"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
@@ -43,8 +42,12 @@ func TestReadAndHydrateStateUsesReadPayload(t *testing.T) {
 	preservedSpaceIDs := types.SetValueMust(types.StringType, []attr.Value{types.StringValue(spaceID)})
 
 	client := newTestFleetClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/s/"+spaceID+"/api/fleet/agent_download_sources/"+sourceID, r.URL.Path)
+		if r.Method != http.MethodGet {
+			t.Errorf("unexpected method: got %q, want %q", r.Method, http.MethodGet)
+		}
+		if r.URL.Path != "/s/"+spaceID+"/api/fleet/agent_download_sources/"+sourceID {
+			t.Errorf("unexpected path: got %q", r.URL.Path)
+		}
 
 		resp := map[string]any{
 			"item": map[string]any{
@@ -57,7 +60,9 @@ func TestReadAndHydrateStateUsesReadPayload(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		require.NoError(t, json.NewEncoder(w).Encode(resp))
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("failed to encode response: %v", err)
+		}
 	}))
 
 	resource := &Resource{}
@@ -84,7 +89,7 @@ func TestCreateAndUpdateFinalizeStateViaReadHydration(t *testing.T) {
 func assertMethodUsesReadHydration(t *testing.T, filename string, methodName string) {
 	t.Helper()
 
-	path := filepath.Join(filename)
+	path := filename
 	fileSet := token.NewFileSet()
 	file, err := parser.ParseFile(fileSet, path, nil, 0)
 	require.NoError(t, err)

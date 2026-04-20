@@ -35,6 +35,7 @@ resource "elasticstack_fleet_agent_download_source" "example" {
 ### Optional
 
 - `default` (Boolean) Set this download source as the default for agents.
+- `kibana_connection` (Block List) Kibana connection configuration block. (see [below for nested schema](#nestedblock--kibana_connection))
 - `proxy_id` (String) The ID of the proxy to use for this download source.
 - `source_id` (String) Unique identifier of the Fleet agent download source.
 - `space_ids` (Set of String) The Kibana space IDs where this download source is available. When set, the download source will be created and managed within the specified space. Note: The order of space IDs does not matter as this is a set.
@@ -42,3 +43,16 @@ resource "elasticstack_fleet_agent_download_source" "example" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+<a id="nestedblock--kibana_connection"></a>
+### Nested Schema for `kibana_connection`
+
+Optional:
+
+- `api_key` (String, Sensitive) API Key to use for authentication to Kibana
+- `bearer_token` (String, Sensitive) Bearer Token to use for authentication to Kibana
+- `ca_certs` (List of String) A list of paths to CA certificates to validate the certificate presented by the Kibana server.
+- `endpoints` (List of String, Sensitive) A comma-separated list of endpoints where the terraform provider will point to, this must include the http(s) schema and port number.
+- `insecure` (Boolean) Disable TLS certificate validation
+- `password` (String, Sensitive) Password to use for API authentication to Kibana.
+- `username` (String) Username to use for API authentication to Kibana.
