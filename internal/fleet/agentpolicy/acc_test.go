@@ -1007,6 +1007,7 @@ func TestAccResourceAgentPolicyWithRestrictedUser(t *testing.T) {
 
 func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 	policyName := sdkacctest.RandStringFromCharSet(22, sdkacctest.CharSetAlphaNum)
+	spaceID := "tamper-protection-" + sdkacctest.RandStringFromCharSet(8, sdkacctest.CharSetAlphaNum)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { acctest.PreCheck(t) },
@@ -1018,6 +1019,7 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("step1"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
+					"space_id":    config.StringVariable(spaceID),
 				},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
@@ -1031,6 +1033,7 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("step2"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
+					"space_id":    config.StringVariable(spaceID),
 				},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
@@ -1046,6 +1049,7 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("step3"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
+					"space_id":    config.StringVariable(spaceID),
 				},
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
@@ -1060,5 +1064,13 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 }
 
 func skipAgentPolicyTamperProtectionTest() (bool, error) {
-	return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
+	return versionutils.CheckIfVersionIsUnsupported(maxVersion(minVersionAgentPolicyTamperProtectionWithDefend, agentpolicy.MinVersionSpaceIDs))()
+}
+
+func maxVersion(v1 *version.Version, v2 *version.Version) *version.Version {
+	if v1.GreaterThan(v2) {
+		return v1
+	}
+
+	return v2
 }
