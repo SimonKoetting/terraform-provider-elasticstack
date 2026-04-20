@@ -22,7 +22,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -1015,16 +1014,8 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc: func() (bool, error) {
-					// Tamper protection requires specific licensing/capabilities and can be ignored by Fleet
-					// even on supported versions. Default to skipping unless explicitly enabled.
-					enabled := os.Getenv("TF_ACC_FLEET_TAMPER_PROTECTION")
-					if enabled != "1" && enabled != "true" {
-						return true, nil
-					}
-					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
-				},
-				ConfigDirectory: acctest.NamedTestCaseDirectory("step1"),
+				SkipFunc:                 skipAgentPolicyTamperProtectionTest,
+				ConfigDirectory:          acctest.NamedTestCaseDirectory("step1"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
 				},
@@ -1036,14 +1027,8 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc: func() (bool, error) {
-					enabled := os.Getenv("TF_ACC_FLEET_TAMPER_PROTECTION")
-					if enabled != "1" && enabled != "true" {
-						return true, nil
-					}
-					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
-				},
-				ConfigDirectory: acctest.NamedTestCaseDirectory("step2"),
+				SkipFunc:                 skipAgentPolicyTamperProtectionTest,
+				ConfigDirectory:          acctest.NamedTestCaseDirectory("step2"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
 				},
@@ -1057,14 +1042,8 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 			},
 			{
 				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc: func() (bool, error) {
-					enabled := os.Getenv("TF_ACC_FLEET_TAMPER_PROTECTION")
-					if enabled != "1" && enabled != "true" {
-						return true, nil
-					}
-					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
-				},
-				ConfigDirectory: acctest.NamedTestCaseDirectory("step3"),
+				SkipFunc:                 skipAgentPolicyTamperProtectionTest,
+				ConfigDirectory:          acctest.NamedTestCaseDirectory("step3"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
 				},
@@ -1078,4 +1057,8 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 			},
 		},
 	})
+}
+
+func skipAgentPolicyTamperProtectionTest() (bool, error) {
+	return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
 }

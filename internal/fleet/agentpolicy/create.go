@@ -47,7 +47,7 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	fleetClient, err := client.GetFleetClient()
-	
+
 	if err != nil {
 		resp.Diagnostics.AddError(err.Error(), "")
 		return
