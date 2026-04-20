@@ -10,5 +10,5 @@ resource "elasticstack_fleet_agent_policy" "test_policy" {
   monitor_logs    = true
   monitor_metrics = false
   skip_destroy    = false
-  is_protected    = true
+  is_protected    = false
 }

@@ -40,6 +40,7 @@ import (
 )
 
 var minVersionAgentPolicy = version.Must(version.NewVersion("8.6.0"))
+var minVersionAgentPolicyTamperProtectionWithDefend = version.Must(version.NewVersion("8.14.0"))
 
 //go:embed testdata/TestAccResourceAgentPolicyFromSDK/main.tf
 var sdkCreateTestConfig string
@@ -1021,9 +1022,49 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 					if enabled != "1" && enabled != "true" {
 						return true, nil
 					}
-					return versionutils.CheckIfVersionIsUnsupported(agentpolicy.MinVersionTamperProtection)()
+					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
 				},
-				ConfigDirectory: acctest.NamedTestCaseDirectory("with_is_protected"),
+				ConfigDirectory: acctest.NamedTestCaseDirectory("step1"),
+				ConfigVariables: config.Variables{
+					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "namespace", "default"),
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "is_protected", "false"),
+				),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.Providers,
+				SkipFunc: func() (bool, error) {
+					enabled := os.Getenv("TF_ACC_FLEET_TAMPER_PROTECTION")
+					if enabled != "1" && enabled != "true" {
+						return true, nil
+					}
+					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
+				},
+				ConfigDirectory: acctest.NamedTestCaseDirectory("step2"),
+				ConfigVariables: config.Variables{
+					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "namespace", "default"),
+					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "is_protected", "false"),
+					resource.TestCheckResourceAttrSet("elasticstack_fleet_elastic_defend_integration_policy.test", "id"),
+					resource.TestCheckResourceAttrPair("elasticstack_fleet_elastic_defend_integration_policy.test", "agent_policy_id", "elasticstack_fleet_agent_policy.test_policy", "policy_id"),
+				),
+			},
+			{
+				ProtoV6ProviderFactories: acctest.Providers,
+				SkipFunc: func() (bool, error) {
+					enabled := os.Getenv("TF_ACC_FLEET_TAMPER_PROTECTION")
+					if enabled != "1" && enabled != "true" {
+						return true, nil
+					}
+					return versionutils.CheckIfVersionIsUnsupported(minVersionAgentPolicyTamperProtectionWithDefend)()
+				},
+				ConfigDirectory: acctest.NamedTestCaseDirectory("step3"),
 				ConfigVariables: config.Variables{
 					"policy_name": config.StringVariable(fmt.Sprintf("Policy %s", policyName)),
 				},
@@ -1031,6 +1072,8 @@ func TestAccResourceAgentPolicyTamperProtection(t *testing.T) {
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "name", fmt.Sprintf("Policy %s", policyName)),
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "namespace", "default"),
 					resource.TestCheckResourceAttr("elasticstack_fleet_agent_policy.test_policy", "is_protected", "true"),
+					resource.TestCheckResourceAttrSet("elasticstack_fleet_elastic_defend_integration_policy.test", "id"),
+					resource.TestCheckResourceAttrPair("elasticstack_fleet_elastic_defend_integration_policy.test", "agent_policy_id", "elasticstack_fleet_agent_policy.test_policy", "policy_id"),
 				),
 			},
 		},
