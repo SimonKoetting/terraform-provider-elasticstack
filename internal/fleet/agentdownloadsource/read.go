@@ -61,7 +61,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		return
 	}
 
-	readState, found, diags := r.readAndHydrateState(ctx, client, sourceID, spaceID, state.SpaceIDs)
+	readState, found, diags := r.readAndHydrateState(ctx, client, sourceID, spaceID, state.SpaceIDs, state.KibanaConnection)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -81,6 +81,7 @@ func (r *Resource) readAndHydrateState(
 	sourceID string,
 	spaceID string,
 	preservedSpaceIDs types.Set,
+	preservedKibanaConnection types.List,
 ) (model, bool, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var state model
@@ -120,5 +121,6 @@ func (r *Resource) readAndHydrateState(
 		state.ProxyID = types.StringNull()
 	}
 	state.SpaceIDs = preservedSpaceIDs
+	state.KibanaConnection = preservedKibanaConnection
 	return state, true, diags
 }

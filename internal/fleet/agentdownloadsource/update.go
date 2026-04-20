@@ -73,7 +73,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	}
 
 	item := updateResp.JSON200.Item
-	readState, found, diags := r.readAndHydrateState(ctx, client, item.Id, spaceID, plan.SpaceIDs)
+	readState, found, diags := r.readAndHydrateState(ctx, client, item.Id, spaceID, plan.SpaceIDs, plan.KibanaConnection)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

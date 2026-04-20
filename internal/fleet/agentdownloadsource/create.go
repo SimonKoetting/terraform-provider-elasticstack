@@ -84,7 +84,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		plan.SpaceIDs = types.SetNull(types.StringType)
 	}
 
-	readState, found, diags := r.readAndHydrateState(ctx, client, item.Id, spaceID, plan.SpaceIDs)
+	readState, found, diags := r.readAndHydrateState(ctx, client, item.Id, spaceID, plan.SpaceIDs, plan.KibanaConnection)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

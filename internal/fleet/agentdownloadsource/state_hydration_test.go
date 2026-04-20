@@ -29,6 +29,7 @@ import (
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients/fleet"
+	providerschema "github.com/elastic/terraform-provider-elasticstack/internal/schema"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,7 @@ func TestReadAndHydrateStateUsesReadPayload(t *testing.T) {
 	sourceID := "source-from-mutation"
 	spaceID := "space-a"
 	preservedSpaceIDs := types.SetValueMust(types.StringType, []attr.Value{types.StringValue(spaceID)})
+	preservedKibanaConnection := providerschema.KibanaConnectionNullList()
 
 	client := newTestFleetClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -66,7 +68,7 @@ func TestReadAndHydrateStateUsesReadPayload(t *testing.T) {
 	}))
 
 	resource := &Resource{}
-	state, found, diags := resource.readAndHydrateState(context.Background(), client, sourceID, spaceID, preservedSpaceIDs)
+	state, found, diags := resource.readAndHydrateState(context.Background(), client, sourceID, spaceID, preservedSpaceIDs, preservedKibanaConnection)
 
 	require.False(t, diags.HasError(), "unexpected diagnostics: %#v", diags)
 	require.True(t, found)
@@ -77,6 +79,7 @@ func TestReadAndHydrateStateUsesReadPayload(t *testing.T) {
 	require.False(t, state.Default.ValueBool())
 	require.Equal(t, "proxy-from-read", state.ProxyID.ValueString())
 	require.Equal(t, preservedSpaceIDs, state.SpaceIDs)
+	require.Equal(t, preservedKibanaConnection, state.KibanaConnection)
 }
 
 func TestCreateAndUpdateFinalizeStateViaReadHydration(t *testing.T) {
