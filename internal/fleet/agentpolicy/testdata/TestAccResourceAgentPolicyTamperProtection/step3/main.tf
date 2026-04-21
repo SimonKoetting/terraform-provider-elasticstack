@@ -28,6 +28,7 @@ resource "elasticstack_fleet_elastic_defend_integration_policy" "test" {
   enabled             = true
   integration_version = "8.14.0"
   preset              = "EDRComplete"
+  space_ids           = [var.space_id]
 
   policy = {
     windows = {
