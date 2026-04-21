@@ -196,9 +196,6 @@ func (model *agentPolicyModel) populateFromAPI(ctx context.Context, data *kbapi.
 
 	}
 
-	// Populate space_ids only when Fleet returns them. Some API responses omit this
-	// field even when the policy is in a non-default space; in that case preserve the
-	// existing Terraform value to avoid falling back to default-space operations.
 	if data.SpaceIds != nil && len(*data.SpaceIds) > 0 {
 		spaceIDs, d := types.SetValueFrom(ctx, types.StringType, *data.SpaceIds)
 		if d.HasError() {
