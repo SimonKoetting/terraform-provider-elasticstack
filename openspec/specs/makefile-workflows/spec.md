@@ -19,7 +19,7 @@ These are the primary **Make variables and conventions** intended for override o
 | `VERSION` | Terraform local install path segment for `make install` |
 | `USE_TLS` | Select TLS vs non-TLS Docker Compose stack |
 | `TEST`, `TESTARGS` | Unit test package scope and extra `go test` arguments |
-| `ACCTEST_PARALLELISM`, `RERUN_FAILS`, `TESTARGS` | Acceptance parallelism, gotestsum rerun policy, and extra test arguments (defaults use `?=`) |
+| `ACCTEST_PARALLELISM`, `RERUN_FAILS`, `RERUN_FAILS_MAX_FAILURES`, `TESTARGS` | Acceptance parallelism, gotestsum rerun policy including the rerun failure cap, and extra test arguments (defaults use `?=`) |
 | `ACCTEST_TIMEOUT`, `ACCTEST_COUNT` | Acceptance timeout and test count (defaults in Makefile; override via `make VAR=value` as for other Make variables) |
 | `ELASTICSEARCH_USERNAME`, `ELASTICSEARCH_PASSWORD` | Credentials for local stack helpers and `testacc-vs-docker` |
 | `KIBANA_SYSTEM_USERNAME`, `KIBANA_SYSTEM_PASSWORD` | Kibana system user password setup against local Elasticsearch |
@@ -147,13 +147,14 @@ The `test` target SHALL run all repository unit-style test suites. It SHALL run 
 
 ### Requirement: Acceptance tests (REQ-023–REQ-024)
 
-The `testacc` target SHALL enable Terraform acceptance testing for the module tree, using gotestsum with rerun-of-fails behavior and tunable parallelism, timeout, and count via the acceptance-test variables. The `testacc-vs-docker` target SHALL run acceptance tests against a local Docker stack on default localhost ports with the configured Elasticsearch credentials.
+The `testacc` target SHALL enable Terraform acceptance testing for the module tree, using gotestsum with rerun-of-fails behavior, a configurable rerun max-failures cap, and tunable parallelism, timeout, and count via the acceptance-test variables. It SHALL invoke the repository-wide package scope `./...` and pass verbose Go test output through to the underlying test run. The `testacc-vs-docker` target SHALL run acceptance tests against a local Docker stack on default localhost ports with the configured Elasticsearch credentials.
 
 #### Scenario: Acceptance tests with defaults
 
 - GIVEN `make testacc`
 - WHEN the recipe runs
 - THEN `TF_ACC` SHALL be set for acceptance mode and tests SHALL run across `./...` with the Makefile’s timeout and parallelism defaults unless overridden
+- AND gotestsum reruns SHALL honor both the configured rerun count and the configured max-failures cap
 
 ### Requirement: Docker-wrapped acceptance tests (REQ-025–REQ-026)
 
