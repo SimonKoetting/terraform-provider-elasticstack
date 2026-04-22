@@ -2,6 +2,8 @@
 
 ### Changes
 
+- Add `elasticstack_fleet_agent_download_source` resource ([#2801](https://github.com/elastic/terraform-provider-elasticstack/pull/2081))
+
 ## [0.14.4] - 2026-04-20
 
 ### Changes
