@@ -18,37 +18,27 @@
 package customintegration
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
+	"github.com/elastic/terraform-provider-elasticstack/internal/resourcecore"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
 var (
-	_ resource.Resource               = &customIntegrationResource{}
-	_ resource.ResourceWithConfigure  = &customIntegrationResource{}
-	_ resource.ResourceWithModifyPlan = &customIntegrationResource{}
+	_ resource.Resource               = newCustomIntegrationResource()
+	_ resource.ResourceWithConfigure  = newCustomIntegrationResource()
+	_ resource.ResourceWithModifyPlan = newCustomIntegrationResource()
 )
+
+type customIntegrationResource struct {
+	*resourcecore.Core
+}
+
+func newCustomIntegrationResource() *customIntegrationResource {
+	return &customIntegrationResource{
+		Core: resourcecore.New(resourcecore.ComponentFleet, "custom_integration"),
+	}
+}
 
 // NewResource is a helper function to simplify the provider implementation.
 func NewResource() resource.Resource {
-	return &customIntegrationResource{}
-}
-
-type customIntegrationResource struct {
-	client *clients.ProviderClientFactory
-}
-
-func (r *customIntegrationResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	factory, diags := clients.ConvertProviderDataToFactory(req.ProviderData)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	r.client = factory
-}
-
-func (r *customIntegrationResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = fmt.Sprintf("%s_%s", req.ProviderTypeName, "fleet_custom_integration")
+	return newCustomIntegrationResource()
 }
