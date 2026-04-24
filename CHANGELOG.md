@@ -1,6 +1,51 @@
 ## [Unreleased]
 
+### Breaking changes
+
+
+Previously `elasticstack_kibana_security_detection_rule` used a map of strings for action parameters. This caused issues with actions requiring non-string based parameters (see https://github.com/elastic/terraform-provider-elasticstack/issues/2339 for an example). This has been changed to a single JSON string value which supports arbitrary param values. 
+
+Previously
+
+```hcl
+resource "elasticstack_kibana_security_detection_rule" "test" {
+...
+
+  actions = [
+    {
+...
+      params = {
+        message = "Test state upgrade alert"
+      }
+...
+  ]
+}
+```
+
+becomes 
+
+```hcl
+resource "elasticstack_kibana_security_detection_rule" "test" {
+...
+
+  actions = [
+    {
+...
+      params = jsonencode({
+        message = "Test state upgrade alert"
+      })
+...
+  ]
+}
+```
+
 ### Changes
+
+- Change `elasticstack_kibana_security_detection_rule.actions[].params` to a JSON string rather than a map of string values. This allows setting arbitrary, nested param values ([#2340](https://github.com/elastic/terraform-provider-elasticstack/pull/2340))
+- Add import support to the elasticstack_elasticsearch_enrich_policy resource ([#2427](https://github.com/elastic/terraform-provider-elasticstack/pull/2427))
+- Add ssl.verification_mode attribute to the elasticstack_fleet_output ssl block ([#2415](https://github.com/elastic/terraform-provider-elasticstack/pull/2415))
+
+## [0.14.5] - 2026-04-21
 
 - Fix `elasticstack_kibana_slo.metric_custom_indicator` to support doc_count aggregation by making field optional and sending the no-field API variant ([#2394](https://github.com/elastic/terraform-provider-elasticstack/pull/2394))
 - Fix "provider produced inconsistent result after apply" for SLO resources when objective target, timeslice target, or histogram range from/to values are not exactly representable in float32 ([#2401](https://github.com/elastic/terraform-provider-elasticstack/pull/2401))
@@ -791,7 +836,8 @@ resource "elasticstack_fleet_output" "output" {
 - Initial set of docs
 - CI integration
 
-[Unreleased]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.4...HEAD
+[Unreleased]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.5...HEAD
+[0.14.5]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.4...v0.14.5
 [0.14.4]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.3...v0.14.4
 [0.14.3]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/elastic/terraform-provider-elasticstack/compare/v0.14.1...v0.14.2
