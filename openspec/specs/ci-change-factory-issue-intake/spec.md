@@ -1,13 +1,8 @@
-# `ci-change-factory-issue-intake` — Issue-labeled OpenSpec proposal factory
-
-Workflow implementation: authored source under `.github/workflows-src/change-factory-issue/`, generating checked-in `.github/workflows/change-factory-issue.md` (via `scripts/compile-workflow-sources`) and `.github/workflows/change-factory-issue.lock.yml` (via `gh aw compile` as part of `make workflow-generate`).
+# ci-change-factory-issue-intake Specification
 
 ## Purpose
-
-Define requirements for a GitHub Agentic Workflow that reacts to trusted GitHub issues labeled `change-factory` and creates exactly one linked OpenSpec change proposal pull request, without implementing provider behavior or provisioning the Elastic Stack.
-
-## ADDED Requirements
-
+TBD - created by archiving change change-factory. Update Purpose after archive.
+## Requirements
 ### Requirement: Workflow source is repository-authored and generated
 The repository SHALL define the `change-factory` issue-intake automation as a repository-authored GitHub Agentic Workflow source under `.github/workflows-src/` that generates checked-in workflow artifacts under `.github/workflows/`: the compiled markdown `.github/workflows/change-factory-issue.md` and the compiled `.github/workflows/change-factory-issue.lock.yml` from `gh aw compile`. Contributors SHALL NOT hand-edit those generated files; they SHALL be regenerated with repository workflow tooling (`make workflow-generate`). Deterministic GitHub-script logic used for trigger qualification, trust checks, or duplicate detection SHALL be factored into repository-local helper code that can be tested independently of the compiled workflow.
 
@@ -115,3 +110,4 @@ If the triggering issue lacks enough context for the agent to create a coherent 
 #### Scenario: Issue is clear enough for a proposal
 - **WHEN** the issue title and body provide enough context to identify the change scope and capability area
 - **THEN** the agent SHALL create the linked OpenSpec proposal pull request without requiring a GitHub comment exploration loop
+

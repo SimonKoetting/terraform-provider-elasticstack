@@ -5,14 +5,18 @@ const {
   ISSUE_BRANCH_PREFIX,
   FACTORY_LABEL,
   ISSUE_OPENED_NOT_ELIGIBLE_REASON,
-} = require('../code-factory-issue/intake-constants.js');
+} = require('../change-factory-issue/intake-constants.js');
 
 const intake = createFactoryIssueIntake({
   branchPrefix: ISSUE_BRANCH_PREFIX,
   factoryLabel: FACTORY_LABEL,
   issueOpenedNotEligibleReason: ISSUE_OPENED_NOT_ELIGIBLE_REASON,
-  duplicateLinkageMode: 'closes-literal',
+  duplicateLinkageMode: 'github-keywords',
 });
+
+function changeFactoryIssueBranchName(issueNumber) {
+  return intake.issueBranchName(issueNumber);
+}
 
 function actorTrustWhenSenderMissing() {
   return factoryActorTrustWhenSenderMissing();
@@ -31,7 +35,7 @@ module.exports = {
   checkActorTrust: intake.checkActorTrust,
   checkDuplicatePR: intake.checkDuplicatePR,
   computeGateReason: intake.computeGateReason,
-  issueBranchName: intake.issueBranchName,
+  changeFactoryIssueBranchName,
   actorTrustWhenSenderMissing,
   parseOptionalTriStateFromEnv,
   parseFinalizeGateEnv,

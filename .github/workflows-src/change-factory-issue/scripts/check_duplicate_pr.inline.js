@@ -1,10 +1,10 @@
 //include: ../intake-constants.js
 //include: ../../lib/factory-issue-shared.js
-//include: ../../lib/code-factory-issue.gh.js
+//include: ../../lib/change-factory-issue.gh.js
 
 const { owner, repo } = context.repo;
 const issueNumber = context.payload.issue?.number;
-const expectedBranch = issueBranchName(issueNumber);
+const expectedBranch = changeFactoryIssueBranchName(issueNumber);
 
 const pulls = await github.paginate(github.rest.pulls.list, {
   owner,
