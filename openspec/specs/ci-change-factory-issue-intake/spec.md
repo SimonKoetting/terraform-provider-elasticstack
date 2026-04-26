@@ -1,7 +1,9 @@
 # ci-change-factory-issue-intake Specification
 
 ## Purpose
-TBD - created by archiving change change-factory. Update Purpose after archive.
+
+Define requirements for a GitHub Agentic Workflow that reacts to trusted GitHub issues labeled `change-factory` and creates exactly one linked OpenSpec change proposal pull request, without implementing provider behavior or provisioning the Elastic Stack.
+
 ## Requirements
 ### Requirement: Workflow source is repository-authored and generated
 The repository SHALL define the `change-factory` issue-intake automation as a repository-authored GitHub Agentic Workflow source under `.github/workflows-src/` that generates checked-in workflow artifacts under `.github/workflows/`: the compiled markdown `.github/workflows/change-factory-issue.md` and the compiled `.github/workflows/change-factory-issue.lock.yml` from `gh aw compile`. Contributors SHALL NOT hand-edit those generated files; they SHALL be regenerated with repository workflow tooling (`make workflow-generate`). Deterministic GitHub-script logic used for trigger qualification, trust checks, or duplicate detection SHALL be factored into repository-local helper code that can be tested independently of the compiled workflow.
