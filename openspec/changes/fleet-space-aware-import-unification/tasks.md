@@ -10,8 +10,8 @@
 
 ## 3. Bug Fix — fleet_server_host
 
-- [ ] 3.1 Embed `*SpaceImporter` in `serverHostResource`, wire `NewSpaceImporter(path.Root("host_id"))` in `newServerHostResource()`, remove the explicit `ImportState` method
-- [ ] 3.2 Add acceptance test `TestAccResourceFleetServerHost_importFromSpace` in `internal/fleet/serverhost/acc_test.go` mirroring the same pattern
+- [x] 3.1 Embed `*SpaceImporter` in `serverHostResource`, wire `NewSpaceImporter(path.Root("host_id"))` in `newServerHostResource()`, remove the explicit `ImportState` method
+- [x] 3.2 Add acceptance test `TestAccResourceFleetServerHost_importFromSpace` in `internal/fleet/serverhost/acc_test.go` mirroring the same pattern
 
 ## 4. Migration — existing resources
 
