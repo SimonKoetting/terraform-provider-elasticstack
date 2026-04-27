@@ -1,7 +1,7 @@
 ## 1. Shared SpaceImporter
 
-- [ ] 1.1 Create `internal/fleet/space_importer.go`: define `SpaceImporter` struct with `idFields []path.Path`, `NewSpaceImporter(fields ...path.Path) *SpaceImporter`, and `ImportState` method that parses composite IDs via `clients.CompositeIDFromStrFw`, sets each `idField` to the resource ID, and sets `space_ids` when a space prefix is present
-- [ ] 1.2 Add unit tests for `SpaceImporter.ImportState` in `internal/fleet/space_importer_test.go`: composite ID sets resource ID and space_ids; plain ID sets resource ID and leaves space_ids nil; multiple idFields all receive the resource ID
+- [x] 1.1 Create `internal/fleet/space_importer.go`: define `SpaceImporter` struct with `idFields []path.Path`, `NewSpaceImporter(fields ...path.Path) *SpaceImporter`, and `ImportState` method that parses composite IDs via `clients.CompositeIDFromStrFw`, sets each `idField` to the resource ID, and sets `space_ids` when a space prefix is present
+- [x] 1.2 Add unit tests for `SpaceImporter.ImportState` in `internal/fleet/space_importer_test.go`: composite ID sets resource ID and space_ids; plain ID sets resource ID and leaves space_ids nil; multiple idFields all receive the resource ID
 
 ## 2. Bug Fix — fleet_output
 
