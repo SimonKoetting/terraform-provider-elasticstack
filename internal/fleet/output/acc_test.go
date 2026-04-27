@@ -537,6 +537,32 @@ func TestAccResourceFleetOutput_importFromSpace(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("elasticstack_fleet_output.test_output", "space_ids.*", spaceID),
 				),
 			},
+			// Scenario 2: plain ID import (no space prefix) - space_ids is not populated
+			{
+				ProtoV6ProviderFactories: acctest.Providers,
+				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionOutputSpaces),
+				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
+				ConfigVariables: config.Variables{
+					"policy_name": config.StringVariable(policyName),
+					"space_id":    config.StringVariable(spaceID),
+					"space_name":  config.StringVariable(fmt.Sprintf("Fleet Output Test Space %s", spaceName)),
+				},
+				ResourceName:            "elasticstack_fleet_output.test_output",
+				ImportState:             true,
+				ImportStateVerify:       false,
+				ImportStateVerifyIgnore: []string{"space_ids"},
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					res := s.RootModule().Resources["elasticstack_fleet_output.test_output"]
+					if res == nil || res.Primary == nil {
+						return "", fmt.Errorf("resource elasticstack_fleet_output.test_output not found in state")
+					}
+					return res.Primary.Attributes["output_id"], nil
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("elasticstack_fleet_output.test_output", "type", "elasticsearch"),
+					resource.TestCheckNoResourceAttr("elasticstack_fleet_output.test_output", "space_ids.#"),
+				),
+			},
 		},
 	})
 }
@@ -556,7 +582,8 @@ func checkResourceOutputDestroy(s *terraform.State) error {
 		if err != nil {
 			return err
 		}
-		output, diags := fleet.GetOutput(context.Background(), fleetClient, rs.Primary.ID, "")
+		spaceID := rs.Primary.Attributes["space_ids.0"]
+		output, diags := fleet.GetOutput(context.Background(), fleetClient, rs.Primary.ID, spaceID)
 		if diags.HasError() {
 			return diagutil.FwDiagsAsError(diags)
 		}
