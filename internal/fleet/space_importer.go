@@ -48,8 +48,11 @@ type SpaceImporter struct {
 }
 
 // NewSpaceImporter constructs a SpaceImporter that will set each of the given
-// fields to the resource ID on import. At least one field is expected.
+// fields to the resource ID on import. At least one field is required.
 func NewSpaceImporter(fields ...path.Path) *SpaceImporter {
+	if len(fields) == 0 {
+		panic("NewSpaceImporter: at least one idField is required")
+	}
 	return &SpaceImporter{idFields: fields}
 }
 
@@ -63,8 +66,8 @@ func (s *SpaceImporter) ImportState(ctx context.Context, req resource.ImportStat
 	var spaceID string
 	var resourceID string
 
-	compID, diags := clients.CompositeIDFromStrFw(req.ID)
-	if diags.HasError() {
+	compID, _ := clients.CompositeIDFromStrFw(req.ID)
+	if compID == nil {
 		resourceID = req.ID
 	} else {
 		spaceID = compID.ClusterID

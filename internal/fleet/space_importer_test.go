@@ -130,3 +130,32 @@ func TestSpaceImporter_multipleIDFields(t *testing.T) {
 	require.Equal(t, "shared-id", resourceID.ValueString())
 	require.Equal(t, "shared-id", extraID.ValueString())
 }
+
+// TestSpaceImporter_multipleIDFields_plainID verifies that when multiple
+// idFields are configured and a plain (non-composite) ID is given, all fields
+// receive the full import ID and space_ids is left null.
+func TestSpaceImporter_multipleIDFields_plainID(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	r := &fakeResource{
+		SpaceImporter: NewSpaceImporter(path.Root("resource_id"), path.Root("extra_id")),
+	}
+	st := providerfwtest.EmptyImportState(t, r)
+	resp := &resource.ImportStateResponse{State: st}
+
+	r.ImportState(ctx, resource.ImportStateRequest{ID: "plain-resource-id"}, resp)
+	require.False(t, resp.Diagnostics.HasError())
+
+	var resourceID, extraID types.String
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("resource_id"), &resourceID)...)
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("extra_id"), &extraID)...)
+	require.False(t, resp.Diagnostics.HasError())
+	require.Equal(t, "plain-resource-id", resourceID.ValueString())
+	require.Equal(t, "plain-resource-id", extraID.ValueString())
+
+	var spaceIDs types.Set
+	resp.Diagnostics.Append(resp.State.GetAttribute(ctx, path.Root("space_ids"), &spaceIDs)...)
+	require.False(t, resp.Diagnostics.HasError())
+	require.True(t, spaceIDs.IsNull(), "space_ids should be null for a plain import ID")
+}
