@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/elastic/terraform-provider-elasticstack/internal/fleet"
 	"github.com/elastic/terraform-provider-elasticstack/internal/resourcecore"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -40,21 +41,19 @@ var MinVersionOutputKafka = version.Must(version.NewVersion("8.13.0"))
 
 type outputResource struct {
 	*resourcecore.Core
+	*fleet.SpaceImporter
 }
 
 func newOutputResource() *outputResource {
 	return &outputResource{
-		Core: resourcecore.New(resourcecore.ComponentFleet, "output"),
+		Core:          resourcecore.New(resourcecore.ComponentFleet, "output"),
+		SpaceImporter: fleet.NewSpaceImporter(path.Root("output_id")),
 	}
 }
 
 // NewResource is a helper function to simplify the provider implementation.
 func NewResource() resource.Resource {
 	return newOutputResource()
-}
-
-func (r *outputResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("output_id"), req, resp)
 }
 
 func (r *outputResource) UpgradeState(context.Context) map[int64]resource.StateUpgrader {

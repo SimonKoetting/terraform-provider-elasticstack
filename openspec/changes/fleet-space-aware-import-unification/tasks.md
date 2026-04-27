@@ -5,8 +5,8 @@
 
 ## 2. Bug Fix — fleet_output
 
-- [ ] 2.1 Embed `*SpaceImporter` in `outputResource`, wire `NewSpaceImporter(path.Root("output_id"))` in `newOutputResource()`, remove the explicit `ImportState` method
-- [ ] 2.2 Add acceptance test `TestAccResourceFleetOutput_importFromSpace` in `internal/fleet/output/acc_test.go` mirroring the pattern from `TestAccResourceIntegrationPolicy_importFromSpace`: create a Kibana space, deploy an output into it, import using composite ID, verify `space_ids` is populated
+- [x] 2.1 Embed `*SpaceImporter` in `outputResource`, wire `NewSpaceImporter(path.Root("output_id"))` in `newOutputResource()`, remove the explicit `ImportState` method
+- [x] 2.2 Add acceptance test `TestAccResourceFleetOutput_importFromSpace` in `internal/fleet/output/acc_test.go` mirroring the pattern from `TestAccResourceIntegrationPolicy_importFromSpace`: create a Kibana space, deploy an output into it, import using composite ID, verify `space_ids` is populated
 
 ## 3. Bug Fix — fleet_server_host
 
