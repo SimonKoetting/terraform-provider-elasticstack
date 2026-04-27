@@ -136,7 +136,11 @@ tools:
   github:
     toolsets: [issues, pull_requests, repos]
 network:
-  allowed: [defaults, node, go, elastic.litellm-prod.ai]
+  allowed: [defaults, node, go, elastic.litellm-prod.ai, www.elastic.co]
+mcp-servers:
+  elastic-docs:
+    url: "https://www.elastic.co/docs/_mcp/"
+    allowed: ["*"]
 checkout:
   fetch-depth: 0
 safe-outputs:
@@ -182,6 +186,16 @@ TF_ACC=1 \
 go test -v -run TestAccResourceName ./path/to/package
 ```
 
+## Elastic documentation
+
+An `elastic-docs` MCP server is available with three tools: `search_docs`, `find_related_docs`, and
+`get_document_by_url`. Before writing implementation code, use `search_docs` to look up API
+behavior, parameters, and constraints for the feature described in the issue. This grounding step
+helps produce accurate implementations and avoids speculative assumptions about API shape.
+
+If the MCP tools are unavailable or return no useful results, proceed with implementation from the
+issue content alone - do not block the run waiting for documentation.
+
 ## Task
 
 Implement the triggering issue on branch `code-factory/issue-${{ github.event.issue.number }}` and create exactly one linked pull request labeled `code-factory`.
@@ -190,7 +204,7 @@ Implement the triggering issue on branch `code-factory/issue-${{ github.event.is
 2. Create or update the implementation on branch `code-factory/issue-${{ github.event.issue.number }}`.
 3. Verify your changes with `make build` and by ensuring targeted acceptance tests pass.
 4. Open exactly one pull request for that branch using the `create-pull-request` safe output.
-5. Preserve canonical issue linkage metadata for deterministic reruns by including `Closes #${{ github.event.issue.number }}` in the PR body — this is the stable identifier that prevents duplicate PR creation on future workflow runs.
+5. Preserve canonical issue linkage metadata for deterministic reruns by including `Closes #${{ github.event.issue.number }}` in the PR body - this is the stable identifier that prevents duplicate PR creation on future workflow runs.
 6. Keep the pull request labeled `code-factory`.
 
 ## Pull request contract
