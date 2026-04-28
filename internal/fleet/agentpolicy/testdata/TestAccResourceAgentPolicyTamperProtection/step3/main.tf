@@ -16,6 +16,7 @@ resource "elasticstack_fleet_agent_policy" "test_policy" {
   monitor_logs    = true
   monitor_metrics = false
   skip_destroy    = false
+  is_protected    = true
   space_ids       = [var.space_id]
 
   depends_on = [elasticstack_kibana_space.tamper_space]
