@@ -1,8 +1,8 @@
 ## 1. Schema and mapping extension
 
-- [ ] 1.1 Inventory advanced Elastic Defend policy fields in the Fleet API that are stable and user-manageable, then map them to typed Terraform schema paths under `policy`.
-- [ ] 1.2 Extend `elasticstack_fleet_elastic_defend_integration_policy` nested schema to include the selected advanced settings while preserving existing defaults and validation boundaries.
-- [ ] 1.3 Update API translation logic so advanced settings round-trip consistently in create, read, update, and import flows.
+- [x] 1.1 Inventory advanced Elastic Defend policy fields in the Fleet API that are stable and user-manageable, then map them to typed Terraform schema paths under `policy`.
+- [x] 1.2 Extend `elasticstack_fleet_elastic_defend_integration_policy` nested schema to include the selected advanced settings while preserving existing defaults and validation boundaries.
+- [x] 1.3 Update API translation logic so advanced settings round-trip consistently in create, read, update, and import flows.
 
 ## 2. Lifecycle and drift safety
 
