@@ -308,6 +308,19 @@ func buildWindowsPolicyPayload(ctx context.Context, winObj types.Object) (map[st
 		win["behavior_protection"] = behProt
 	}
 
+	if !wm.Advanced.IsNull() && !wm.Advanced.IsUnknown() {
+		var am windowsMacAdvancedModel
+		d = wm.Advanced.As(ctx, &am, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		advanced := map[string]any{}
+		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
+		setAdvancedAlertsPayloadWithCloudLookup(ctx, advanced, am.Alerts, &diags)
+		win["advanced"] = advanced
+	}
+
 	if !wm.Popup.IsNull() && !wm.Popup.IsUnknown() {
 		var pm windowsPopupModel
 		d = wm.Popup.As(ctx, &pm, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
@@ -444,6 +457,19 @@ func buildMacPolicyPayload(ctx context.Context, macObj types.Object) (map[string
 		mac["behavior_protection"] = behProt
 	}
 
+	if !mm.Advanced.IsNull() && !mm.Advanced.IsUnknown() {
+		var am windowsMacAdvancedModel
+		d = mm.Advanced.As(ctx, &am, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		advanced := map[string]any{}
+		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
+		setAdvancedAlertsPayloadWithCloudLookup(ctx, advanced, am.Alerts, &diags)
+		mac["advanced"] = advanced
+	}
+
 	if !mm.Popup.IsNull() && !mm.Popup.IsUnknown() {
 		var pm macLinuxPopupModel
 		d = mm.Popup.As(ctx, &pm, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
@@ -544,6 +570,19 @@ func buildLinuxPolicyPayload(ctx context.Context, linuxObj types.Object) (map[st
 		linux["behavior_protection"] = behProt
 	}
 
+	if !lm.Advanced.IsNull() && !lm.Advanced.IsUnknown() {
+		var am linuxAdvancedModel
+		d = lm.Advanced.As(ctx, &am, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		advanced := map[string]any{}
+		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
+		setAdvancedAlertsPayload(ctx, advanced, am.Alerts, &diags)
+		linux["advanced"] = advanced
+	}
+
 	if !lm.Popup.IsNull() && !lm.Popup.IsUnknown() {
 		var pm macLinuxPopupModel
 		d = lm.Popup.As(ctx, &pm, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
@@ -587,6 +626,12 @@ func setStringField(m map[string]any, key string, val types.String) {
 	}
 }
 
+func setInt64Field(m map[string]any, key string, val types.Int64) {
+	if !val.IsNull() && !val.IsUnknown() {
+		m[key] = val.ValueInt64()
+	}
+}
+
 // setPopupItem extracts a popup item from a Terraform object and adds it to the map.
 func setPopupItem(ctx context.Context, m map[string]any, key string, obj types.Object, diags *diag.Diagnostics) {
 	if obj.IsNull() || obj.IsUnknown() {
@@ -599,4 +644,54 @@ func setPopupItem(ctx context.Context, m map[string]any, key string, obj types.O
 	setStringField(item, "message", pm.Message)
 	setBoolField(item, "enabled", pm.Enabled)
 	m[key] = item
+}
+
+func setAdvancedAgentPayload(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
+	if obj.IsNull() || obj.IsUnknown() {
+		return
+	}
+	var model advancedAgentModel
+	d := obj.As(ctx, &model, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+	diags.Append(d...)
+	agent := map[string]any{}
+	setInt64Field(agent, "connection_delay", model.ConnectionDelay)
+	target["agent"] = agent
+}
+
+func setAdvancedAlertsPayload(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
+	if obj.IsNull() || obj.IsUnknown() {
+		return
+	}
+	var model advancedAlertsModel
+	d := obj.As(ctx, &model, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+	diags.Append(d...)
+	alerts := map[string]any{}
+	setAdvancedHashPayload(ctx, alerts, model.Hash, diags)
+	target["alerts"] = alerts
+}
+
+func setAdvancedAlertsPayloadWithCloudLookup(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
+	if obj.IsNull() || obj.IsUnknown() {
+		return
+	}
+	var model advancedAlertsCloudLookupModel
+	d := obj.As(ctx, &model, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+	diags.Append(d...)
+	alerts := map[string]any{}
+	setAdvancedHashPayload(ctx, alerts, model.Hash, diags)
+	setBoolField(alerts, "cloud_lookup", model.CloudLookup)
+	target["alerts"] = alerts
+}
+
+func setAdvancedHashPayload(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
+	if obj.IsNull() || obj.IsUnknown() {
+		return
+	}
+	var model advancedHashModel
+	d := obj.As(ctx, &model, basetypes.ObjectAsOptions{UnhandledNullAsEmpty: true, UnhandledUnknownAsEmpty: true})
+	diags.Append(d...)
+	hash := map[string]any{}
+	setBoolField(hash, "md5", model.MD5)
+	setBoolField(hash, "sha1", model.SHA1)
+	target["hash"] = hash
 }

@@ -30,6 +30,10 @@ func TestResourceSchemaModelsDefendPolicyDefaults(t *testing.T) {
 	mac := mustSingleNestedAttribute(t, policy.Attributes, "mac")
 	linux := mustSingleNestedAttribute(t, policy.Attributes, "linux")
 
+	mustSingleNestedAttribute(t, windows.Attributes, "advanced")
+	mustSingleNestedAttribute(t, mac.Attributes, "advanced")
+	mustSingleNestedAttribute(t, linux.Attributes, "advanced")
+
 	assertPopupDefaults(t, mustSingleNestedAttribute(t, mustSingleNestedAttribute(t, windows.Attributes, "popup").Attributes, "malware"))
 	assertPopupDefaults(t, mustSingleNestedAttribute(t, mustSingleNestedAttribute(t, mac.Attributes, "popup").Attributes, "malware"))
 	assertPopupDefaults(t, mustSingleNestedAttribute(t, mustSingleNestedAttribute(t, linux.Attributes, "popup").Attributes, "malware"))
