@@ -25,6 +25,10 @@ The `elasticstack_fleet_elastic_defend_integration_policy` resource already mode
   - Alternative considered: preserve all unknown advanced fields in public Terraform state. Rejected because opaque state expansion creates unstable diffs and breaks typed-state expectations.
 - Require acceptance test expansion to cover representative advanced branches per operating system and verify round-trip behavior.
 
+## Task 1.1 inventory artifact
+
+- Field-by-field inclusion/exclusion rationale for the initial advanced subset is tracked in `openspec/changes/elastic-defend-policy-advanced-settings/advanced-fields-inventory.md`.
+
 ## Risks / Trade-offs
 
 - [Risk] API advanced settings evolve faster than schema updates -> Mitigation: constrain requirements to API-supported, stable user-managed fields and expand tests as new fields are added.
