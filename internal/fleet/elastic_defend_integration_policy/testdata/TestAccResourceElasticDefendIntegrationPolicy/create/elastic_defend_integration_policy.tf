@@ -48,6 +48,18 @@ resource "elasticstack_fleet_elastic_defend_integration_policy" "test" {
       logging = {
         file = "info"
       }
+      advanced = {
+        agent = {
+          connection_delay = 90
+        }
+        alerts = {
+          cloud_lookup = true
+          hash = {
+            md5  = true
+            sha1 = false
+          }
+        }
+      }
     }
     mac = {
       events = {
@@ -66,6 +78,18 @@ resource "elasticstack_fleet_elastic_defend_integration_policy" "test" {
       }
       logging = {
         file = "warning"
+      }
+      advanced = {
+        agent = {
+          connection_delay = 45
+        }
+        alerts = {
+          cloud_lookup = false
+          hash = {
+            md5  = false
+            sha1 = true
+          }
+        }
       }
     }
     linux = {
@@ -89,6 +113,17 @@ resource "elasticstack_fleet_elastic_defend_integration_policy" "test" {
       }
       logging = {
         file = "warning"
+      }
+      advanced = {
+        agent = {
+          connection_delay = 30
+        }
+        alerts = {
+          hash = {
+            md5  = true
+            sha1 = true
+          }
+        }
       }
     }
   }
