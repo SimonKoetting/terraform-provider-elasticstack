@@ -753,7 +753,7 @@ func TestAdvancedConnectionDelayInvalidTypeWarnsAndOmits(t *testing.T) {
 	}
 }
 
-func TestLinuxAdvancedCloudLookupWarnsAndIsNotRoundTripped(t *testing.T) {
+func TestLinuxAdvancedCloudLookupIsSilentlyIgnoredAndNotRoundTripped(t *testing.T) {
 	ctx := context.Background()
 
 	endpointConfig := map[string]struct {
@@ -795,8 +795,8 @@ func TestLinuxAdvancedCloudLookupWarnsAndIsNotRoundTripped(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("expected no errors, got %v", diags)
 	}
-	if len(diags) == 0 {
-		t.Fatal("expected warning for unsupported linux advanced alerts.cloud_lookup field")
+	if len(diags) > 0 {
+		t.Fatalf("expected no warnings for unsupported linux advanced alerts.cloud_lookup field, got %v", diags)
 	}
 
 	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
