@@ -80,6 +80,7 @@ set ` + "`skip_destroy` to `true`."
 			Optional:    true,
 			Computed:    true,
 			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 				stringplanmodifier.RequiresReplace(),
 			},
 		},

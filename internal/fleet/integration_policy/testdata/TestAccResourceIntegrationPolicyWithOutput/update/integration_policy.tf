@@ -31,9 +31,10 @@ provider "elasticstack" {
 }
 
 resource "elasticstack_fleet_integration" "test_policy" {
-  name    = var.integration_name
-  version = var.integration_version
-  force   = true
+  name         = var.integration_name
+  version      = var.integration_version
+  force        = true
+  skip_destroy = true
 }
 
 resource "elasticstack_fleet_agent_policy" "test_policy" {

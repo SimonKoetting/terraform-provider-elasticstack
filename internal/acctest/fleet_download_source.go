@@ -20,7 +20,6 @@ package acctest
 import (
 	"context"
 	"net/http"
-	"sync"
 	"testing"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
@@ -29,8 +28,6 @@ import (
 
 // Stable ID for acceptance-test bootstrap; lives in the default Kibana space and is not managed by Terraform state.
 const fleetAcceptanceDefaultDownloadSourceID = "terraform-acc-fleet-default-download-source"
-
-var ensureFleetDefaultDownloadSourceOnce sync.Once
 
 func ensureFleetDefaultAgentDownloadSource(t *testing.T) {
 	t.Helper()

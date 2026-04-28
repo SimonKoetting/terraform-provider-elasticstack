@@ -80,9 +80,10 @@ func PreCheck(t *testing.T) {
 
 	// Fleet rejects agent policy operations unless a default agent binary download source with a host exists.
 	// See https://github.com/elastic/kibana/issues/139513 — per-policy download_source_id alone is not enough.
-	ensureFleetDefaultDownloadSourceOnce.Do(func() {
-		ensureFleetDefaultAgentDownloadSource(t)
-	})
+	//
+	// Run this on every PreCheck (not sync.Once): acceptance tests may run in many independent
+	// go test processes in CI, and the first attempt can happen while Fleet is still initializing.
+	ensureFleetDefaultAgentDownloadSource(t)
 }
 
 func PreCheckWithExplicitKibanaEndpoint(t *testing.T) {

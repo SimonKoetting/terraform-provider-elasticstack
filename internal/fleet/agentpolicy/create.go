@@ -19,8 +19,11 @@ package agentpolicy
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/asyncutils"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients/fleet"
 	"github.com/elastic/terraform-provider-elasticstack/internal/utils/typeutils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -129,6 +132,33 @@ func (r *agentPolicyResource) Create(ctx context.Context, req resource.CreateReq
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if policy != nil && typeutils.IsKnown(planWantsTamperProtection) && planWantsTamperProtection.ValueBool() && !planModel.IsProtected.ValueBool() {
+		waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		waitErr := asyncutils.WaitForStateTransition(waitCtx, "fleet agent policy", policy.Id, func(waitCtx context.Context) (bool, error) {
+			reloaded, getDiags := fleet.GetAgentPolicy(waitCtx, fleetClient, policy.Id, spaceID)
+			if getDiags.HasError() {
+				return false, fmt.Errorf("failed to reload agent policy: %s", getDiags[0].Summary())
+			}
+			if reloaded == nil {
+				return false, nil
+			}
+			if reloaded.IsProtected {
+				policy = reloaded
+				return true, nil
+			}
+			return false, nil
+		})
+		if waitErr == nil {
+			diags = planModel.populateFromAPI(ctx, policy)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
 	}
 
 	if typeutils.IsKnown(planWantsTamperProtection) && planWantsTamperProtection.ValueBool() &&
