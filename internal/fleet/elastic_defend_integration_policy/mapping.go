@@ -757,6 +757,12 @@ func mapAdvancedAlertsFromAPI(ctx context.Context, data map[string]any) (types.O
 	if len(data) == 0 {
 		return types.ObjectNull(advancedAlertsAttrTypes()), diags
 	}
+	if _, hasCloudLookup := data["cloud_lookup"]; hasCloudLookup {
+		diags.Append(diag.NewWarningDiagnostic(
+			"Ignoring unsupported Linux advanced alerts field",
+			"Received policy.linux.advanced.alerts.cloud_lookup from the API response, but this field is not modeled for Linux and will be ignored to avoid unstable diffs.",
+		))
+	}
 
 	hashObj, d := mapAdvancedHashFromAPI(ctx, getMap(data, "hash"))
 	diags.Append(d...)

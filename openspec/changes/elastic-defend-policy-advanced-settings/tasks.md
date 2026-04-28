@@ -6,9 +6,9 @@
 
 ## 2. Lifecycle and drift safety
 
-- [ ] 2.1 Ensure create/update payload building includes modeled advanced settings in the Defend typed input shape without introducing unsupported server-managed fields.
-- [ ] 2.2 Confirm read/import behavior maps modeled advanced settings into state and ignores unmodeled server-managed fields to avoid unstable diffs.
-- [ ] 2.3 Add or refine diagnostics for unsupported or invalid advanced-setting combinations surfaced by API responses.
+- [x] 2.1 Ensure create/update payload building includes modeled advanced settings in the Defend typed input shape without introducing unsupported server-managed fields.
+- [x] 2.2 Confirm read/import behavior maps modeled advanced settings into state and ignores unmodeled server-managed fields to avoid unstable diffs.
+- [x] 2.3 Add or refine diagnostics for unsupported or invalid advanced-setting combinations surfaced by API responses.
 
 ## 3. Validation and acceptance coverage
 

@@ -752,3 +752,71 @@ func TestAdvancedConnectionDelayInvalidTypeWarnsAndOmits(t *testing.T) {
 		}
 	}
 }
+
+func TestLinuxAdvancedCloudLookupWarnsAndIsNotRoundTripped(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"linux": map[string]any{
+				"advanced": map[string]any{
+					"alerts": map[string]any{
+						"cloud_lookup": true,
+						"hash": map[string]any{
+							"md5":  true,
+							"sha1": false,
+						},
+						"server_managed_only": "ignored",
+					},
+					"agent": map[string]any{
+						"connection_delay": 15,
+						"unknown_leaf":     "ignored",
+					},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-linux-cloud", "linux-cloud", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+	if len(diags) == 0 {
+		t.Fatal("expected warning for unsupported linux advanced alerts.cloud_lookup field")
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	linux := policyValue["linux"].(map[string]any)
+	advanced := linux["advanced"].(map[string]any)
+	alerts := advanced["alerts"].(map[string]any)
+	if _, exists := alerts["cloud_lookup"]; exists {
+		t.Fatal("expected linux advanced alerts.cloud_lookup to be omitted from payload")
+	}
+	if _, exists := alerts["server_managed_only"]; exists {
+		t.Fatal("expected unmodeled linux advanced alerts field to be omitted from payload")
+	}
+	agent := advanced["agent"].(map[string]any)
+	if _, exists := agent["unknown_leaf"]; exists {
+		t.Fatal("expected unmodeled linux advanced agent field to be omitted from payload")
+	}
+}
