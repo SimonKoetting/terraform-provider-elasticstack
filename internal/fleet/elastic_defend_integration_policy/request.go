@@ -318,7 +318,9 @@ func buildWindowsPolicyPayload(ctx context.Context, winObj types.Object) (map[st
 		advanced := map[string]any{}
 		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
 		setAdvancedAlertsPayloadWithCloudLookup(ctx, advanced, am.Alerts, &diags)
-		win["advanced"] = advanced
+		if len(advanced) > 0 {
+			win["advanced"] = advanced
+		}
 	}
 
 	if !wm.Popup.IsNull() && !wm.Popup.IsUnknown() {
@@ -467,7 +469,9 @@ func buildMacPolicyPayload(ctx context.Context, macObj types.Object) (map[string
 		advanced := map[string]any{}
 		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
 		setAdvancedAlertsPayloadWithCloudLookup(ctx, advanced, am.Alerts, &diags)
-		mac["advanced"] = advanced
+		if len(advanced) > 0 {
+			mac["advanced"] = advanced
+		}
 	}
 
 	if !mm.Popup.IsNull() && !mm.Popup.IsUnknown() {
@@ -580,7 +584,9 @@ func buildLinuxPolicyPayload(ctx context.Context, linuxObj types.Object) (map[st
 		advanced := map[string]any{}
 		setAdvancedAgentPayload(ctx, advanced, am.Agent, &diags)
 		setAdvancedAlertsPayload(ctx, advanced, am.Alerts, &diags)
-		linux["advanced"] = advanced
+		if len(advanced) > 0 {
+			linux["advanced"] = advanced
+		}
 	}
 
 	if !lm.Popup.IsNull() && !lm.Popup.IsUnknown() {
@@ -655,7 +661,9 @@ func setAdvancedAgentPayload(ctx context.Context, target map[string]any, obj typ
 	diags.Append(d...)
 	agent := map[string]any{}
 	setInt64Field(agent, "connection_delay", model.ConnectionDelay)
-	target["agent"] = agent
+	if len(agent) > 0 {
+		target["agent"] = agent
+	}
 }
 
 func setAdvancedAlertsPayload(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
@@ -667,7 +675,9 @@ func setAdvancedAlertsPayload(ctx context.Context, target map[string]any, obj ty
 	diags.Append(d...)
 	alerts := map[string]any{}
 	setAdvancedHashPayload(ctx, alerts, model.Hash, diags)
-	target["alerts"] = alerts
+	if len(alerts) > 0 {
+		target["alerts"] = alerts
+	}
 }
 
 func setAdvancedAlertsPayloadWithCloudLookup(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
@@ -680,7 +690,9 @@ func setAdvancedAlertsPayloadWithCloudLookup(ctx context.Context, target map[str
 	alerts := map[string]any{}
 	setAdvancedHashPayload(ctx, alerts, model.Hash, diags)
 	setBoolField(alerts, "cloud_lookup", model.CloudLookup)
-	target["alerts"] = alerts
+	if len(alerts) > 0 {
+		target["alerts"] = alerts
+	}
 }
 
 func setAdvancedHashPayload(ctx context.Context, target map[string]any, obj types.Object, diags *diag.Diagnostics) {
@@ -693,5 +705,7 @@ func setAdvancedHashPayload(ctx context.Context, target map[string]any, obj type
 	hash := map[string]any{}
 	setBoolField(hash, "md5", model.MD5)
 	setBoolField(hash, "sha1", model.SHA1)
-	target["hash"] = hash
+	if len(hash) > 0 {
+		target["hash"] = hash
+	}
 }

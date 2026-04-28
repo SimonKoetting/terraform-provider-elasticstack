@@ -645,3 +645,110 @@ func TestAdvancedPolicySettingsRoundTripInReadAndFinalize(t *testing.T) {
 		t.Fatalf("expected linux advanced agent connection_delay 30, got %v", linuxAdvanced["agent"].(map[string]any)["connection_delay"])
 	}
 }
+
+func TestAdvancedPolicyMappingOmitsEmptyAdvancedObjects(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"windows": map[string]any{
+				"events": map[string]any{
+					"process": true,
+				},
+				"advanced": map[string]any{
+					"agent":  map[string]any{},
+					"alerts": map[string]any{},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-empty-advanced", "empty-advanced", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	windows := policyValue["windows"].(map[string]any)
+	if _, exists := windows["advanced"]; exists {
+		t.Fatal("expected windows.advanced to be omitted when all modeled advanced children are empty")
+	}
+}
+
+func TestAdvancedConnectionDelayInvalidTypeWarnsAndOmits(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"windows": map[string]any{
+				"events": map[string]any{
+					"process": true,
+				},
+				"advanced": map[string]any{
+					"agent": map[string]any{
+						"connection_delay": "90s",
+					},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-invalid-advanced", "invalid-advanced", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+	if len(diags) == 0 || diags.HasError() {
+		t.Fatal("expected warning for unsupported connection_delay value type")
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	windows := policyValue["windows"].(map[string]any)
+	if advanced, exists := windows["advanced"]; exists {
+		agent, agentExists := advanced.(map[string]any)["agent"]
+		if agentExists {
+			if _, hasDelay := agent.(map[string]any)["connection_delay"]; hasDelay {
+				t.Fatal("expected invalid connection_delay to be omitted from payload")
+			}
+		}
+	}
+}

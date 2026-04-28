@@ -239,27 +239,54 @@ func getString(m map[string]any, key string) types.String {
 	return types.StringNull()
 }
 
-func getInt64(m map[string]any, key string) types.Int64 {
+func getConnectionDelay(m map[string]any, key string) (types.Int64, bool, diag.Diagnostics) {
+	var diags diag.Diagnostics
 	if m == nil {
-		return types.Int64Null()
+		return types.Int64Null(), false, diags
 	}
 	v, ok := m[key]
 	if !ok {
-		return types.Int64Null()
+		return types.Int64Null(), false, diags
 	}
+
 	switch value := v.(type) {
 	case int:
-		return types.Int64Value(int64(value))
+		return types.Int64Value(int64(value)), true, diags
 	case int32:
-		return types.Int64Value(int64(value))
+		return types.Int64Value(int64(value)), true, diags
 	case int64:
-		return types.Int64Value(value)
+		return types.Int64Value(value), true, diags
 	case float64:
-		if math.Trunc(value) == value {
-			return types.Int64Value(int64(value))
+		if value > math.MaxInt64 || value < math.MinInt64 {
+			diags.Append(diag.NewWarningDiagnostic(
+				"Ignoring unsupported connection_delay value",
+				fmt.Sprintf("The value %v is out of int64 range, so policy advanced.agent.connection_delay is ignored.", value),
+			))
+			return types.Int64Null(), true, diags
 		}
+		if math.Trunc(value) != value {
+			diags.Append(diag.NewWarningDiagnostic(
+				"Ignoring unsupported connection_delay value",
+				fmt.Sprintf("The value %v is not a whole number, so policy advanced.agent.connection_delay is ignored.", value),
+			))
+			return types.Int64Null(), true, diags
+		}
+		return types.Int64Value(int64(value)), true, diags
+	default:
+		diags.Append(diag.NewWarningDiagnostic(
+			"Ignoring unsupported connection_delay value",
+			fmt.Sprintf("Expected a whole number for policy advanced.agent.connection_delay but got %T; value is ignored.", v),
+		))
+		return types.Int64Null(), true, diags
 	}
-	return types.Int64Null()
+}
+
+func isKnownObject(v types.Object) bool {
+	return !v.IsNull() && !v.IsUnknown()
+}
+
+func isKnownBool(v types.Bool) bool {
+	return !v.IsNull() && !v.IsUnknown()
 }
 
 // Helper to extract sub-map from a map.
@@ -668,6 +695,9 @@ func mapWindowsAdvancedFromAPI(ctx context.Context, data map[string]any) (types.
 	diags.Append(d...)
 	alertsObj, d := mapAdvancedAlertsCloudLookupFromAPI(ctx, getMap(data, "alerts"))
 	diags.Append(d...)
+	if !isKnownObject(agentObj) && !isKnownObject(alertsObj) {
+		return types.ObjectNull(windowsMacAdvancedAttrTypes()), diags
+	}
 
 	obj, d := types.ObjectValueFrom(ctx, windowsMacAdvancedAttrTypes(), windowsMacAdvancedModel{
 		Agent:  agentObj,
@@ -691,6 +721,9 @@ func mapLinuxAdvancedFromAPI(ctx context.Context, data map[string]any) (types.Ob
 	diags.Append(d...)
 	alertsObj, d := mapAdvancedAlertsFromAPI(ctx, getMap(data, "alerts"))
 	diags.Append(d...)
+	if !isKnownObject(agentObj) && !isKnownObject(alertsObj) {
+		return types.ObjectNull(linuxAdvancedAttrTypes()), diags
+	}
 
 	obj, d := types.ObjectValueFrom(ctx, linuxAdvancedAttrTypes(), linuxAdvancedModel{
 		Agent:  agentObj,
@@ -706,8 +739,14 @@ func mapAdvancedAgentFromAPI(ctx context.Context, data map[string]any) (types.Ob
 		return types.ObjectNull(advancedAgentAttrTypes()), diags
 	}
 
+	connectionDelay, exists, d := getConnectionDelay(data, "connection_delay")
+	diags.Append(d...)
+	if !exists || connectionDelay.IsNull() {
+		return types.ObjectNull(advancedAgentAttrTypes()), diags
+	}
+
 	obj, d := types.ObjectValueFrom(ctx, advancedAgentAttrTypes(), advancedAgentModel{
-		ConnectionDelay: getInt64(data, "connection_delay"),
+		ConnectionDelay: connectionDelay,
 	})
 	diags.Append(d...)
 	return obj, diags
@@ -721,6 +760,9 @@ func mapAdvancedAlertsFromAPI(ctx context.Context, data map[string]any) (types.O
 
 	hashObj, d := mapAdvancedHashFromAPI(ctx, getMap(data, "hash"))
 	diags.Append(d...)
+	if !isKnownObject(hashObj) {
+		return types.ObjectNull(advancedAlertsAttrTypes()), diags
+	}
 
 	obj, d := types.ObjectValueFrom(ctx, advancedAlertsAttrTypes(), advancedAlertsModel{
 		Hash: hashObj,
@@ -737,10 +779,14 @@ func mapAdvancedAlertsCloudLookupFromAPI(ctx context.Context, data map[string]an
 
 	hashObj, d := mapAdvancedHashFromAPI(ctx, getMap(data, "hash"))
 	diags.Append(d...)
+	cloudLookup := getBool(data, "cloud_lookup")
+	if !isKnownObject(hashObj) && !isKnownBool(cloudLookup) {
+		return types.ObjectNull(advancedAlertsCloudLookupAttrTypes()), diags
+	}
 
 	obj, d := types.ObjectValueFrom(ctx, advancedAlertsCloudLookupAttrTypes(), advancedAlertsCloudLookupModel{
 		Hash:        hashObj,
-		CloudLookup: getBool(data, "cloud_lookup"),
+		CloudLookup: cloudLookup,
 	})
 	diags.Append(d...)
 	return obj, diags
@@ -752,9 +798,15 @@ func mapAdvancedHashFromAPI(ctx context.Context, data map[string]any) (types.Obj
 		return types.ObjectNull(advancedHashAttrTypes()), diags
 	}
 
+	md5 := getBool(data, "md5")
+	sha1 := getBool(data, "sha1")
+	if !isKnownBool(md5) && !isKnownBool(sha1) {
+		return types.ObjectNull(advancedHashAttrTypes()), diags
+	}
+
 	obj, d := types.ObjectValueFrom(ctx, advancedHashAttrTypes(), advancedHashModel{
-		MD5:  getBool(data, "md5"),
-		SHA1: getBool(data, "sha1"),
+		MD5:  md5,
+		SHA1: sha1,
 	})
 	diags.Append(d...)
 	return obj, diags
