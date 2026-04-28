@@ -12,6 +12,6 @@
 
 ## 3. Validation and acceptance coverage
 
-- [ ] 3.1 Add acceptance test scenarios that configure representative advanced settings across Windows, macOS, and Linux policy branches.
-- [ ] 3.2 Add import/refresh parity checks to verify advanced settings do not drift after import and subsequent plan.
-- [ ] 3.3 Run targeted tests for the Elastic Defend resource and fix any regressions in schema defaults or API mapping behavior.
+- [x] 3.1 Add acceptance test scenarios that configure representative advanced settings across Windows, macOS, and Linux policy branches.
+- [x] 3.2 Add import/refresh parity checks to verify advanced settings do not drift after import and subsequent plan.
+- [x] 3.3 Run targeted tests for the Elastic Defend resource and fix any regressions in schema defaults or API mapping behavior.
