@@ -34,7 +34,7 @@ var (
 	_ resource.Resource                = newAgentPolicyResource()
 	_ resource.ResourceWithConfigure   = newAgentPolicyResource()
 	_ resource.ResourceWithImportState = newAgentPolicyResource()
-  _ resource.ResourceWithModifyPlan  = newAgentPolicyResource()
+	_ resource.ResourceWithModifyPlan  = newAgentPolicyResource()
 )
 
 var (
