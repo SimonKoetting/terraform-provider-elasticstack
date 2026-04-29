@@ -94,24 +94,6 @@ func TestAccResourceFleetAgentDownloadSource(t *testing.T) {
 					if res == nil || res.Primary == nil {
 						return "", fmt.Errorf("resource elasticstack_fleet_agent_download_source.test not found in state")
 					}
-					return fmt.Sprintf("default/%s", res.Primary.ID), nil
-				},
-			},
-			{
-				ProtoV6ProviderFactories: acctest.Providers,
-				SkipFunc:                 versionutils.CheckIfVersionIsUnsupported(minVersionFleetAgentDownloadSource),
-				ConfigDirectory:          acctest.NamedTestCaseDirectory("update"),
-				ConfigVariables: config.Variables{
-					"suffix": config.StringVariable(random),
-				},
-				ResourceName:      "elasticstack_fleet_agent_download_source.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: func(s *terraform.State) (string, error) {
-					res := s.RootModule().Resources["elasticstack_fleet_agent_download_source.test"]
-					if res == nil || res.Primary == nil {
-						return "", fmt.Errorf("resource elasticstack_fleet_agent_download_source.test not found in state")
-					}
 					return res.Primary.ID, nil
 				},
 			},

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL = help
 SHELL := /bin/bash
 
-VERSION ?= 0.14.3
+VERSION ?= 0.14.5
 
 NAME = elasticstack
 BINARY = terraform-provider-${NAME}
@@ -35,6 +35,7 @@ FLEET_IMAGE := elastic/elastic-agent
 endif
 
 RERUN_FAILS ?= 5
+RERUN_FAILS_MAX_FAILURES ?= 20
 
 export GOBIN = $(shell pwd)/bin
 
@@ -63,7 +64,7 @@ testacc-vs-docker:
 
 .PHONY: testacc
 testacc: ## Run acceptance tests
-	TF_ACC=1 go tool gotestsum --format testname --rerun-fails=$(RERUN_FAILS) --packages="-v ./..." -- -count $(ACCTEST_COUNT) -parallel $(ACCTEST_PARALLELISM) $(TESTARGS) -timeout $(ACCTEST_TIMEOUT)
+	TF_ACC=1 go tool gotestsum --format testname --rerun-fails=$(RERUN_FAILS) --rerun-fails-max-failures=$(RERUN_FAILS_MAX_FAILURES) --packages="./..." -- -v -count $(ACCTEST_COUNT) -parallel $(ACCTEST_PARALLELISM) $(TESTARGS) -timeout $(ACCTEST_TIMEOUT)
 
 .PHONY: hook-test
 hook-test: ## Run hook JavaScript unit tests
@@ -133,7 +134,8 @@ copy-kibana-ca: ## Copy Kibana CA certificate to local machine
 
 .PHONY: docs-generate
 docs-generate: tools ## Generate documentation for the provider
-	@ go tool github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name terraform-provider-elasticstack
+	@ terraform_version="$$(tr -d '[:space:]' < .terraform-version)"; \
+	go tool github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-name terraform-provider-elasticstack --tf-version "$$terraform_version"
 
 .PHONY: workflow-generate
 workflow-generate: ## Generate workflow markdown sources
@@ -200,7 +202,7 @@ lint: GOLANGCIFLAGS += --fix
 lint: setup golangci-lint fmt docs-generate ## Run lints to check the spelling and common go patterns
 
 .PHONY: check-lint
-check-lint: setup check-openspec golangci-lint check-workflows check-fmt check-docs
+check-lint: setup check-openspec golangci-lint check-workflows check-fmt gen check-docs
 
 .PHONY: setup-openspec
 setup-openspec: node_modules/.openspec-stamp ## Install Node dependencies (OpenSpec CLI via npm ci)
@@ -290,5 +292,3 @@ release-notes: ## greps UNRELEASED notes from the CHANGELOG
 help: ## this help
 	@ awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m\t%s\n", $$1, $$2 }' $(MAKEFILE_LIST) | column -s$$'\t' -t
 
-.PHONY: generate-clients
-generate-clients: gen ## generate all clients

@@ -34,12 +34,12 @@ func (r *Resource) Update(ctx context.Context, request resource.UpdateRequest, r
 		return
 	}
 
-	if r.client == nil {
+	if r.Client() == nil {
 		response.Diagnostics.AddError("Provider not configured", "Expected configured provider client factory")
 		return
 	}
 
-	apiClient, diags := r.client.GetKibanaClient(ctx, plan.KibanaConnection)
+	apiClient, diags := r.Client().GetKibanaClient(ctx, plan.KibanaConnection)
 	response.Diagnostics.Append(diags...)
 	if response.Diagnostics.HasError() {
 		return
@@ -121,7 +121,10 @@ func (r *Resource) Update(ctx context.Context, request resource.UpdateRequest, r
 		Settings:        apiModel.Settings,
 		GroupBy:         groupBy,
 		Tags:            kibanaoapi.TagsToPtr(apiModel.Tags),
+		Artifacts:       apiModel.Artifacts,
 	}
+
+	desiredEnabled := plan.Enabled
 
 	fwDiags := kibanaoapi.UpdateSlo(ctx, oapi, apiModel.SpaceID, apiModel.SloID, reqModel)
 	response.Diagnostics.Append(fwDiags...)
@@ -130,6 +133,11 @@ func (r *Resource) Update(ctx context.Context, request resource.UpdateRequest, r
 	}
 
 	r.readAndPopulate(ctx, apiClient, &plan, &response.Diagnostics)
+	if response.Diagnostics.HasError() {
+		return
+	}
+
+	r.reconcileSloEnabledAfterWrite(ctx, apiClient, oapi, apiModel.SpaceID, apiModel.SloID, desiredEnabled, &plan, &response.Diagnostics)
 	if response.Diagnostics.HasError() {
 		return
 	}

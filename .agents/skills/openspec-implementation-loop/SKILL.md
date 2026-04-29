@@ -1,8 +1,8 @@
 ---
-name: openspec-implementation-loop
-description: Orchestrates an end-to-end implementation loop for a single OpenSpec change: select a change, ask commit-only vs PR delivery, implement one top-level task at a time with a fresh dedicated subagent for each task, run review and verification subagents after each completed top-level task, feed findings back for fixes, push to origin, then either watch GitHub Actions on the branch (commit mode) or create a PR and watch PR checks while polling for and addressing PR reviews (PR mode). Use when the user wants to implement an approved OpenSpec proposal/change with iterative review and CI feedback.
-license: MIT
-compatibility: Requires openspec CLI, git, and GitHub CLI.
+name: "openspec-implementation-loop"
+description: "Orchestrates an end-to-end implementation loop for a single OpenSpec change: select a change, ask commit-only vs PR delivery, implement one top-level task at a time with a fresh dedicated subagent for each task, run review and verification subagents after each completed top-level task, feed findings back for fixes, push to origin, then either watch GitHub Actions on the branch (commit mode) or create a PR and watch PR checks while polling for and addressing PR reviews (PR mode). Use when the user wants to implement an approved OpenSpec proposal/change with iterative review and CI feedback."
+license: "MIT"
+compatibility: "Requires openspec CLI, git, and GitHub CLI."
 metadata:
   author: openspec
   version: "2.0"
@@ -253,13 +253,13 @@ Orchestrate an implementation loop around a single OpenSpec change.
     - record the PR number or URL
 
     **PR polling loop**:
-    - use `.agents/skills/openspec-implementation-loop/check-pr-state.py <pr>` on every poll; it runs the required `gh` commands in one place and returns a single JSON payload covering PR checks, reviews, issue comments, review comments, and unresolved review threads
+    - use `.agents/skills/openspec-implementation-loop/scripts/check-pr-state.py <pr>` on every poll; it runs the required `gh` commands in one place and returns a single JSON payload covering PR checks, reviews, issue comments, review comments, and unresolved review threads
     - after each push, restart the PR polling loop from the beginning for the new PR head commit
     - on every poll, inspect both the check summary and the review summary from that script output; do not treat comment polling as a separate schedule
 
     Example:
     ```bash
-    .agents/skills/openspec-implementation-loop/check-pr-state.py <pr>
+    .agents/skills/openspec-implementation-loop/scripts/check-pr-state.py <pr>
     ```
 
     **Polling cadence**:

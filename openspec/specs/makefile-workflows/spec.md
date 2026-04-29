@@ -19,7 +19,7 @@ These are the primary **Make variables and conventions** intended for override o
 | `VERSION` | Terraform local install path segment for `make install` |
 | `USE_TLS` | Select TLS vs non-TLS Docker Compose stack |
 | `TEST`, `TESTARGS` | Unit test package scope and extra `go test` arguments |
-| `ACCTEST_PARALLELISM`, `RERUN_FAILS`, `TESTARGS` | Acceptance parallelism, gotestsum rerun policy, and extra test arguments (defaults use `?=`) |
+| `ACCTEST_PARALLELISM`, `RERUN_FAILS`, `RERUN_FAILS_MAX_FAILURES`, `TESTARGS` | Acceptance parallelism, gotestsum rerun policy including the rerun failure cap, and extra test arguments (defaults use `?=`) |
 | `ACCTEST_TIMEOUT`, `ACCTEST_COUNT` | Acceptance timeout and test count (defaults in Makefile; override via `make VAR=value` as for other Make variables) |
 | `ELASTICSEARCH_USERNAME`, `ELASTICSEARCH_PASSWORD` | Credentials for local stack helpers and `testacc-vs-docker` |
 | `KIBANA_SYSTEM_USERNAME`, `KIBANA_SYSTEM_PASSWORD` | Kibana system user password setup against local Elasticsearch |
@@ -36,11 +36,11 @@ Environment variables consumed by underlying tools (for example Terraform loggin
 
 - **Help:** `help` (default goal)
 - **Dependencies & build:** `vendor`, `build-ci`, `build`, `clean`, `install`
-- **Tests:** `test`, `testacc`, `testacc-vs-docker`, `docker-testacc`, `docker-testacc-with-token`
+- **Tests:** `workflow-test`, `hook-test`, `test`, `testacc`, `testacc-vs-docker`, `docker-testacc`, `docker-testacc-with-token`
 - **Docker & HTTP helpers:** `docker-elasticsearch`, `docker-kibana`, `docker-fleet`, `docker-clean`, `copy-kibana-ca`, `set-kibana-password`, `setup-synthetics`, `create-es-api-key`, `create-es-bearer-token`, `setup-kibana-fleet`
-- **Lint, format, docs, OpenSpec:** `tools`, `golangci-lint`, `lint`, `check-lint`, `fmt`, `check-fmt`, `docs-generate`, `workflow-generate`, `workflow-test`, `check-workflows`, `check-docs`, `setup-openspec`, `check-openspec`, `setup`
-- **Release & maintenance:** `release-snapshot`, `release-no-publish`, `release`, `check-sign-release`, `check-publish-release`, `release-notes`, `renovate-post-upgrade`, `notice`
-- **Codegen:** `gen`, `generate-clients`
+- **Lint, format, docs, OpenSpec:** `tools`, `golangci-lint-custom`, `golangci-lint`, `lint-perf`, `lint`, `check-lint`, `fmt`, `check-fmt`, `docs-generate`, `workflow-generate`, `check-workflows`, `check-docs`, `setup-openspec`, `check-openspec`, `setup`
+- **Release & maintenance:** `prep-release`, `release-snapshot`, `release-no-publish`, `release`, `check-sign-release`, `check-publish-release`, `release-notes`, `renovate-post-upgrade`, `notice`
+- **Codegen:** `gen`
 ## Requirements
 ### Requirement: Default goal and help (REQ-001–REQ-002)
 
@@ -147,13 +147,14 @@ The `test` target SHALL run all repository unit-style test suites. It SHALL run 
 
 ### Requirement: Acceptance tests (REQ-023–REQ-024)
 
-The `testacc` target SHALL enable Terraform acceptance testing for the module tree, using gotestsum with rerun-of-fails behavior and tunable parallelism, timeout, and count via the acceptance-test variables. The `testacc-vs-docker` target SHALL run acceptance tests against a local Docker stack on default localhost ports with the configured Elasticsearch credentials.
+The `testacc` target SHALL enable Terraform acceptance testing for the module tree, using gotestsum with rerun-of-fails behavior, a configurable rerun max-failures cap, and tunable parallelism, timeout, and count via the acceptance-test variables. It SHALL invoke the repository-wide package scope `./...` and pass verbose Go test output through to the underlying test run. The `testacc-vs-docker` target SHALL run acceptance tests against a local Docker stack on default localhost ports with the configured Elasticsearch credentials.
 
 #### Scenario: Acceptance tests with defaults
 
 - GIVEN `make testacc`
 - WHEN the recipe runs
 - THEN `TF_ACC` SHALL be set for acceptance mode and tests SHALL run across `./...` with the Makefile’s timeout and parallelism defaults unless overridden
+- AND gotestsum reruns SHALL honor both the configured rerun count and the configured max-failures cap
 
 ### Requirement: Docker-wrapped acceptance tests (REQ-025–REQ-026)
 
@@ -223,31 +224,14 @@ The `copy-kibana-ca` target SHALL copy the Kibana TLS CA certificate from the ru
 
 ### Requirement: Documentation, workflow, and code generation (REQ-038–REQ-042)
 
-The `docs-generate` target SHALL regenerate Terraform provider website/markdown documentation using **HashiCorp `terraform-plugin-docs`** (`tfplugindocs`) for provider name `terraform-provider-elasticstack`. The `workflow-generate` target SHALL regenerate the checked-in GitHub workflow artifacts from the repository-authored workflow sources, and it SHALL run only when explicitly requested. Aggregate targets such as `gen`, `lint`, and `build` SHALL NOT depend on `workflow-generate`. The `workflow-test` target SHALL run the repository tests that cover workflow source generation. The `hook-test` target SHALL run `node --test .agents/hooks/*.test.mjs`. The `check-workflows` target SHALL verify that generated workflow artifacts are up to date without regenerating them. The `gen` target SHALL run documentation generation and `go generate` for the repository.
+The `docs-generate` target SHALL regenerate Terraform provider website/markdown documentation using **HashiCorp `terraform-plugin-docs`** (`tfplugindocs`) for provider name `terraform-provider-elasticstack`. `docs-generate` SHALL read the Terraform CLI version from the repository root `.terraform-version` file and SHALL pass that exact version to `tfplugindocs` via `--tf-version`, so documentation generation does not depend on whichever Terraform binary happens to be installed locally. The `workflow-generate` target SHALL regenerate the checked-in GitHub workflow artifacts from the repository-authored workflow sources, and it SHALL run only when explicitly requested. Aggregate targets such as `gen`, `lint`, `check-lint`, and `build` SHALL NOT depend on `workflow-generate`. The `workflow-test` target SHALL run the repository tests that cover workflow source generation. The `hook-test` target SHALL run `node --test .agents/hooks/*.test.mjs`. The `check-workflows` target SHALL verify that generated workflow artifacts are up to date without regenerating them. The `gen` target SHALL run documentation generation and `go generate` for the repository.
 
 #### Scenario: Docs generation
 
 - GIVEN `make docs-generate`
 - WHEN it succeeds
 - THEN `tfplugindocs` SHALL have regenerated provider docs to match the current schema
-
-#### Scenario: Manual workflow generation
-
-- GIVEN `make workflow-generate`
-- WHEN it succeeds
-- THEN the checked-in workflow artifacts SHALL be regenerated from the repository-authored workflow sources
-
-#### Scenario: Hook test target
-
-- GIVEN `make hook-test`
-- WHEN the target runs
-- THEN Node's test runner SHALL execute `.agents/hooks/*.test.mjs`
-
-#### Scenario: Workflow drift check without regeneration
-
-- GIVEN generated workflow sources are out of date with their checked-in templates
-- WHEN `make check-workflows` runs
-- THEN it SHALL fail without regenerating workflow artifacts
+- AND the Terraform CLI version used for schema extraction SHALL come from `.terraform-version`
 
 ### Requirement: golangci-lint execution (REQ-041–REQ-043)
 
@@ -267,7 +251,7 @@ The `tools` target SHALL provision golangci-lint at the **version pinned in the 
 - AND Go packages outside `internal/` SHALL be part of the lint scope unless excluded by repository golangci-lint configuration
 
 ### Requirement: Lint aggregate targets (REQ-044–REQ-045)
-The `lint` target SHALL run setup, golangci-lint (with fix), formatting, and documentation generation, and it SHALL NOT invoke workflow generation. The `check-lint` target SHALL run setup, OpenSpec structural validation, golangci-lint (check mode), workflow generation checks, format check, and documentation freshness check.
+The `lint` target SHALL run setup, golangci-lint (with fix), formatting, and documentation generation, and it SHALL NOT invoke workflow generation. The `check-lint` target SHALL run setup, OpenSpec structural validation, golangci-lint (check mode), workflow generation checks, format check, repository code generation via `gen`, and documentation freshness check.
 
 #### Scenario: Lint matches contributor workflow
 - GIVEN `make lint`
@@ -359,30 +343,31 @@ The `release-notes` target SHALL print the body of the `## [Unreleased]` section
 - WHEN `make release-notes` runs
 - THEN standard output SHALL contain only the Unreleased section body
 
-### Requirement: Consolidated Kibana client codegen (`generate-clients`)
+### Requirement: Consolidated Kibana client codegen (`gen`)
 
-The `generate-clients` target SHALL run the repository’s general Kibana/OpenAPI codegen path (`gen`) and SHALL NOT invoke a separate OpenAPI generation step that writes under `generated/slo`. The Makefile SHALL NOT define a `generate-slo-client` target.
+The `gen` target SHALL remain the repository’s single root-Makefile entry point for checked-in code and documentation generation. The root Makefile SHALL NOT define a `generate-clients` target or a separate `generate-slo-client` target.
 
-#### Scenario: generate-clients does not produce generated/slo
+#### Scenario: Root codegen entry point remains `gen`
 
-- **WHEN** `make generate-clients` completes successfully on a clean checkout after this change
-- **THEN** the recipe SHALL NOT run OpenAPI generation dedicated to a `generated/slo` package path
+- **WHEN** a contributor inspects the root Makefile for repository-wide generation
+- **THEN** `gen` SHALL be the available root target for that workflow
 
-#### Scenario: Deprecated SLO generator target absent
+#### Scenario: Deprecated generator targets absent
 
-- **WHEN** a contributor inspects the root Makefile for SLO-specific client generation
-- **THEN** there SHALL be no `generate-slo-client` phony target or equivalent recipe that populated `generated/slo`
+- **WHEN** a contributor inspects the root Makefile for older client-generation entry points
+- **THEN** there SHALL be no `generate-clients` phony target
+- **AND** there SHALL be no `generate-slo-client` phony target or equivalent recipe that populated `generated/slo`
 
 ### Requirement: Custom lint performance measurement target
 
-The Makefile SHALL provide a `lint-perf` target that captures isolated performance data for the repository's custom golangci analyzers without relying on aggregate `make lint` wall time. The target SHALL build or reuse the repository-local custom golangci binary, run `esclienthelper` and `acctestconfigdirlint` individually against `./...` with fixed single-run concurrency, and write timing plus CPU, memory, and trace artifacts to a repo-local output directory for each run.
+The Makefile SHALL provide a `lint-perf` target that captures isolated performance data for the repository's custom golangci analyzers without relying on aggregate `make lint` wall time. The target SHALL build or reuse the repository-local custom golangci binary, run `acctestconfigdirlint` against `./...` with fixed single-run concurrency, and write timing plus CPU, memory, and trace artifacts to a repo-local output directory.
 
 #### Scenario: Isolated custom linter profiles
 
 - **GIVEN** a contributor runs `make lint-perf`
 - **WHEN** the target invokes the custom golangci binary
-- **THEN** `esclienthelper` and `acctestconfigdirlint` SHALL be measured in isolated runs rather than only as part of the full default linter set
-- **AND** each run SHALL emit timing/profile artifacts under a repo-local output directory
+- **THEN** `acctestconfigdirlint` SHALL be measured in an isolated run rather than only as part of the full default linter set
+- **AND** that run SHALL emit timing/profile artifacts under a repo-local output directory
 
 #### Scenario: Repository-aligned scope and entrypoint
 
@@ -393,16 +378,16 @@ The Makefile SHALL provide a `lint-perf` target that captures isolated performan
 
 ### Requirement: Custom analyzer benchmark capture
 
-The `lint-perf` target SHALL also run repository-local Go benchmarks for the custom analyzer packages and capture their outputs alongside the isolated golangci-lint measurements. This benchmark capture SHALL use the analyzer packages under `analysis/` so future optimizer changes can compare targeted analyzer workloads in addition to full-repository isolated runs.
+The `lint-perf` target SHALL also run repository-local Go benchmarks for the `acctestconfigdirlint` analyzer package and capture their outputs alongside the isolated golangci-lint measurements. This benchmark capture SHALL use the analyzer package under `analysis/acctestconfigdirlint/...` so future optimizer changes can compare targeted analyzer workloads in addition to the repository-wide isolated run.
 
 #### Scenario: Analyzer benchmark outputs
 
 - **GIVEN** a contributor runs `make lint-perf`
 - **WHEN** the measurement target completes successfully
-- **THEN** the output directory SHALL contain benchmark output for the custom analyzer packages in addition to the isolated golangci-lint profile artifacts
+- **THEN** the output directory SHALL contain benchmark output for `analysis/acctestconfigdirlint/...` in addition to the isolated golangci-lint profile artifacts
 
 ### Requirement: Release preparation workflow dispatch target
-The Makefile SHALL provide a maintainer-facing target that dispatches the release preparation GitHub workflow through `gh workflow run` instead of performing release mutation locally. The target SHALL accept a bump-mode input that supports `patch`, `minor`, and `major`, SHALL default that input to `patch`, and SHALL reject unsupported bump values before invoking `gh`.
+The Makefile SHALL provide a maintainer-facing `prep-release` target that dispatches the release preparation GitHub workflow through `gh workflow run` instead of performing release mutation locally. The target SHALL accept a bump-mode input that supports `patch`, `minor`, and `major`, SHALL default that input to `patch`, and SHALL reject unsupported bump values before invoking `gh`.
 
 #### Scenario: Default bump input dispatches patch release preparation
 - **GIVEN** a maintainer runs the release preparation Make target without overriding the bump mode

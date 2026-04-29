@@ -607,6 +607,8 @@ var transformers = []TransformFunc{
 	fixSyntheticsMonitorModels,
 	fixSyntheticsMonitorParams,
 	fixAlertingRuleBody,
+	fixSloFloatFormats,
+	fixSloResponseArtifacts,
 	transformRemoveExamples,
 	transformRemoveUnusedComponents,
 	transformOmitEmptyNullable,
@@ -884,6 +886,22 @@ func transformKibanaPaths(schema *Schema) {
 	syntheticsPrivateLocationsPath.Post.Set(
 		"responses.200.content.application/json.schema",
 		Map{"$ref": "#/components/schemas/Synthetics_getPrivateLocation"},
+	)
+	syntheticsPrivateLocationsPath.Post.Set(
+		"requestBody.content.application/json.schema.properties.geo.properties.lat.format",
+		"double",
+	)
+	syntheticsPrivateLocationsPath.Post.Set(
+		"requestBody.content.application/json.schema.properties.geo.properties.lon.format",
+		"double",
+	)
+	schema.Components.Set(
+		"schemas.Synthetics_getPrivateLocation.properties.geo.properties.lat.format",
+		"double",
+	)
+	schema.Components.Set(
+		"schemas.Synthetics_getPrivateLocation.properties.geo.properties.lon.format",
+		"double",
 	)
 
 	schema.Components.CreateRef(schema, "Data_views_data_view_response_object_inner", "schemas.Data_views_data_view_response_object.properties.data_view")
@@ -1453,6 +1471,48 @@ func fixAlertingRuleBody(schema *Schema) {
 	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Body_Union", "requestBody.content.application/json.schema")
 }
 
+// fixSloFloatFormats adds format: double to all floating-point fields in SLO
+// schemas that the Terraform provider surfaces as Float64 attributes. Without
+// an explicit format the Kibana spec uses "type: number" which oapi-codegen
+// maps to float32, causing silent precision loss when users write values such
+// as 0.999 (see https://github.com/elastic/terraform-provider-elasticstack/issues/2396).
+// format: double instructs oapi-codegen to emit float64 instead, preserving
+// full IEEE-754 double precision throughout the read/write cycle.
+func fixSloFloatFormats(schema *Schema) {
+	// Objective target and timeslice target (the fields reported in issue #2396)
+	schema.Components.Set("schemas.SLOs_objective.properties.target.format", "double")
+	schema.Components.Set("schemas.SLOs_objective.properties.timesliceTarget.format", "double")
+
+	// Histogram range indicator good/total from & to
+	const histGoodFrom = "schemas.SLOs_indicator_properties_histogram.properties.params.properties.good.properties.from.format"
+	const histGoodTo = "schemas.SLOs_indicator_properties_histogram.properties.params.properties.good.properties.to.format"
+	const histTotalFrom = "schemas.SLOs_indicator_properties_histogram.properties.params.properties.total.properties.from.format"
+	const histTotalTo = "schemas.SLOs_indicator_properties_histogram.properties.params.properties.total.properties.to.format"
+	schema.Components.Set(histGoodFrom, "double")
+	schema.Components.Set(histGoodTo, "double")
+	schema.Components.Set(histTotalFrom, "double")
+	schema.Components.Set(histTotalTo, "double")
+
+	// APM latency threshold (milliseconds)
+	schema.Components.Set("schemas.SLOs_indicator_properties_apm_latency.properties.params.properties.threshold.format", "double")
+
+	// Timeslice metric threshold and percentile
+	schema.Components.Set("schemas.SLOs_indicator_properties_timeslice_metric.properties.params.properties.metric.properties.threshold.format", "double")
+	schema.Components.Set("schemas.SLOs_timeslice_metric_percentile_metric.properties.percentile.format", "double")
+}
+
+// fixSloResponseArtifacts adds the `artifacts` property to the SLO response
+// schema. Kibana's published OpenAPI omits it from SLOs_slo_with_summary_response
+// even though the GET endpoint returns it (it is documented on the create/update
+// request schemas). Adding it here lets oapi-codegen populate JSON200.Artifacts
+// directly, removing the need for the resource layer to re-decode the body.
+func fixSloResponseArtifacts(schema *Schema) {
+	schema.Components.Set(
+		"schemas.SLOs_slo_with_summary_response.properties.artifacts",
+		Map{"$ref": "#/components/schemas/SLOs_artifacts"},
+	)
+}
+
 func fixAlertingRuleParams(schema *Schema) {
 	postEndpoint := schema.MustGetPath("/api/alerting/rule/{id}").MustGetEndpoint("post")
 	postEndpoint.CreateRef(schema, "Alerting_Rule_API_Params", "requestBody.content.application/json.schema.anyOf.1.properties.params")
@@ -1514,8 +1574,8 @@ func fixSyntheticsMonitorModels(schema *Schema) {
 	schema.Components.Set("schemas.geo_pos", Map{
 		"additionalProperties": false,
 		"properties": Map{
-			"lat": Map{"type": "number"},
-			"lon": Map{"type": "number"},
+			"lat": Map{"format": "double", "type": "number"},
+			"lon": Map{"format": "double", "type": "number"},
 		},
 		"type": "object",
 	})
