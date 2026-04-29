@@ -53,6 +53,7 @@ type windowsPolicyModel struct {
 	Ransomware             types.Object `tfsdk:"ransomware"`
 	MemoryProtection       types.Object `tfsdk:"memory_protection"`
 	BehaviorProtection     types.Object `tfsdk:"behavior_protection"`
+	Advanced               types.Object `tfsdk:"advanced"`
 	Popup                  types.Object `tfsdk:"popup"`
 	Logging                types.Object `tfsdk:"logging"`
 	AntivirusRegistration  types.Object `tfsdk:"antivirus_registration"`
@@ -65,6 +66,7 @@ type macPolicyModel struct {
 	Malware            types.Object `tfsdk:"malware"`
 	MemoryProtection   types.Object `tfsdk:"memory_protection"`
 	BehaviorProtection types.Object `tfsdk:"behavior_protection"`
+	Advanced           types.Object `tfsdk:"advanced"`
 	Popup              types.Object `tfsdk:"popup"`
 	Logging            types.Object `tfsdk:"logging"`
 }
@@ -75,8 +77,37 @@ type linuxPolicyModel struct {
 	Malware            types.Object `tfsdk:"malware"`
 	MemoryProtection   types.Object `tfsdk:"memory_protection"`
 	BehaviorProtection types.Object `tfsdk:"behavior_protection"`
+	Advanced           types.Object `tfsdk:"advanced"`
 	Popup              types.Object `tfsdk:"popup"`
 	Logging            types.Object `tfsdk:"logging"`
+}
+
+type advancedAgentModel struct {
+	ConnectionDelay types.Int64 `tfsdk:"connection_delay"`
+}
+
+type advancedHashModel struct {
+	MD5  types.Bool `tfsdk:"md5"`
+	SHA1 types.Bool `tfsdk:"sha1"`
+}
+
+type advancedAlertsModel struct {
+	Hash types.Object `tfsdk:"hash"`
+}
+
+type advancedAlertsCloudLookupModel struct {
+	Hash        types.Object `tfsdk:"hash"`
+	CloudLookup types.Bool   `tfsdk:"cloud_lookup"`
+}
+
+type linuxAdvancedModel struct {
+	Agent  types.Object `tfsdk:"agent"`
+	Alerts types.Object `tfsdk:"alerts"`
+}
+
+type windowsMacAdvancedModel struct {
+	Agent  types.Object `tfsdk:"agent"`
+	Alerts types.Object `tfsdk:"alerts"`
 }
 
 // windowsEventsModel holds the Windows event collection flags.

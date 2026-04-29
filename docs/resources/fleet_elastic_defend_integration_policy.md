@@ -51,12 +51,47 @@ Optional:
 
 Optional:
 
+- `advanced` (Attributes) Linux advanced policy settings. (see [below for nested schema](#nestedatt--policy--linux--advanced))
 - `behavior_protection` (Attributes) Linux behavior protection settings. (see [below for nested schema](#nestedatt--policy--linux--behavior_protection))
 - `events` (Attributes) Linux event collection settings. (see [below for nested schema](#nestedatt--policy--linux--events))
 - `logging` (Attributes) Linux logging settings. (see [below for nested schema](#nestedatt--policy--linux--logging))
 - `malware` (Attributes) Linux malware protection settings. (see [below for nested schema](#nestedatt--policy--linux--malware))
 - `memory_protection` (Attributes) Linux memory protection settings. (see [below for nested schema](#nestedatt--policy--linux--memory_protection))
 - `popup` (Attributes) Linux popup notification settings. (see [below for nested schema](#nestedatt--policy--linux--popup))
+
+<a id="nestedatt--policy--linux--advanced"></a>
+### Nested Schema for `policy.linux.advanced`
+
+Optional:
+
+- `agent` (Attributes) Advanced agent settings. (see [below for nested schema](#nestedatt--policy--linux--advanced--agent))
+- `alerts` (Attributes) Linux advanced alert settings. (see [below for nested schema](#nestedatt--policy--linux--advanced--alerts))
+
+<a id="nestedatt--policy--linux--advanced--agent"></a>
+### Nested Schema for `policy.linux.advanced.agent`
+
+Optional:
+
+- `connection_delay` (Number) Seconds to wait for endpoint-agent connectivity before first policy response.
+
+
+<a id="nestedatt--policy--linux--advanced--alerts"></a>
+### Nested Schema for `policy.linux.advanced.alerts`
+
+Optional:
+
+- `hash` (Attributes) Hashing behavior for alerts. (see [below for nested schema](#nestedatt--policy--linux--advanced--alerts--hash))
+
+<a id="nestedatt--policy--linux--advanced--alerts--hash"></a>
+### Nested Schema for `policy.linux.advanced.alerts.hash`
+
+Optional:
+
+- `md5` (Boolean) Include MD5 hashes in alerts.
+- `sha1` (Boolean) Include SHA-1 hashes in alerts.
+
+
+
 
 <a id="nestedatt--policy--linux--behavior_protection"></a>
 ### Nested Schema for `policy.linux.behavior_protection`
@@ -149,12 +184,48 @@ Optional:
 
 Optional:
 
+- `advanced` (Attributes) macOS advanced policy settings. (see [below for nested schema](#nestedatt--policy--mac--advanced))
 - `behavior_protection` (Attributes) macOS behavior protection settings. (see [below for nested schema](#nestedatt--policy--mac--behavior_protection))
 - `events` (Attributes) macOS event collection settings. (see [below for nested schema](#nestedatt--policy--mac--events))
 - `logging` (Attributes) macOS logging settings. (see [below for nested schema](#nestedatt--policy--mac--logging))
 - `malware` (Attributes) macOS malware protection settings. (see [below for nested schema](#nestedatt--policy--mac--malware))
 - `memory_protection` (Attributes) macOS memory protection settings. (see [below for nested schema](#nestedatt--policy--mac--memory_protection))
 - `popup` (Attributes) macOS popup notification settings. (see [below for nested schema](#nestedatt--policy--mac--popup))
+
+<a id="nestedatt--policy--mac--advanced"></a>
+### Nested Schema for `policy.mac.advanced`
+
+Optional:
+
+- `agent` (Attributes) Advanced agent settings. (see [below for nested schema](#nestedatt--policy--mac--advanced--agent))
+- `alerts` (Attributes) Advanced alert settings. (see [below for nested schema](#nestedatt--policy--mac--advanced--alerts))
+
+<a id="nestedatt--policy--mac--advanced--agent"></a>
+### Nested Schema for `policy.mac.advanced.agent`
+
+Optional:
+
+- `connection_delay` (Number) Seconds to wait for endpoint-agent connectivity before first policy response.
+
+
+<a id="nestedatt--policy--mac--advanced--alerts"></a>
+### Nested Schema for `policy.mac.advanced.alerts`
+
+Optional:
+
+- `cloud_lookup` (Boolean) Use cloud lookup to reduce false positives before alerting.
+- `hash` (Attributes) Hashing behavior for alerts. (see [below for nested schema](#nestedatt--policy--mac--advanced--alerts--hash))
+
+<a id="nestedatt--policy--mac--advanced--alerts--hash"></a>
+### Nested Schema for `policy.mac.advanced.alerts.hash`
+
+Optional:
+
+- `md5` (Boolean) Include MD5 hashes in alerts.
+- `sha1` (Boolean) Include SHA-1 hashes in alerts.
+
+
+
 
 <a id="nestedatt--policy--mac--behavior_protection"></a>
 ### Nested Schema for `policy.mac.behavior_protection`
@@ -247,6 +318,7 @@ Optional:
 
 Optional:
 
+- `advanced` (Attributes) Windows advanced policy settings. (see [below for nested schema](#nestedatt--policy--windows--advanced))
 - `antivirus_registration` (Attributes) Windows antivirus registration settings. (see [below for nested schema](#nestedatt--policy--windows--antivirus_registration))
 - `attack_surface_reduction` (Attributes) Windows attack surface reduction settings. (see [below for nested schema](#nestedatt--policy--windows--attack_surface_reduction))
 - `behavior_protection` (Attributes) Windows behavior protection settings. (see [below for nested schema](#nestedatt--policy--windows--behavior_protection))
@@ -256,6 +328,41 @@ Optional:
 - `memory_protection` (Attributes) Windows memory protection settings. (see [below for nested schema](#nestedatt--policy--windows--memory_protection))
 - `popup` (Attributes) Windows popup notification settings. (see [below for nested schema](#nestedatt--policy--windows--popup))
 - `ransomware` (Attributes) Windows ransomware protection settings. (see [below for nested schema](#nestedatt--policy--windows--ransomware))
+
+<a id="nestedatt--policy--windows--advanced"></a>
+### Nested Schema for `policy.windows.advanced`
+
+Optional:
+
+- `agent` (Attributes) Advanced agent settings. (see [below for nested schema](#nestedatt--policy--windows--advanced--agent))
+- `alerts` (Attributes) Advanced alert settings. (see [below for nested schema](#nestedatt--policy--windows--advanced--alerts))
+
+<a id="nestedatt--policy--windows--advanced--agent"></a>
+### Nested Schema for `policy.windows.advanced.agent`
+
+Optional:
+
+- `connection_delay` (Number) Seconds to wait for endpoint-agent connectivity before first policy response.
+
+
+<a id="nestedatt--policy--windows--advanced--alerts"></a>
+### Nested Schema for `policy.windows.advanced.alerts`
+
+Optional:
+
+- `cloud_lookup` (Boolean) Use cloud lookup to reduce false positives before alerting.
+- `hash` (Attributes) Hashing behavior for alerts. (see [below for nested schema](#nestedatt--policy--windows--advanced--alerts--hash))
+
+<a id="nestedatt--policy--windows--advanced--alerts--hash"></a>
+### Nested Schema for `policy.windows.advanced.alerts.hash`
+
+Optional:
+
+- `md5` (Boolean) Include MD5 hashes in alerts.
+- `sha1` (Boolean) Include SHA-1 hashes in alerts.
+
+
+
 
 <a id="nestedatt--policy--windows--antivirus_registration"></a>
 ### Nested Schema for `policy.windows.antivirus_registration`

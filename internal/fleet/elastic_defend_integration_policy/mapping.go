@@ -20,6 +20,7 @@ package elasticdefendintegrationpolicy
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/utils/typeutils"
@@ -238,6 +239,56 @@ func getString(m map[string]any, key string) types.String {
 	return types.StringNull()
 }
 
+func getConnectionDelay(m map[string]any, key string) (types.Int64, bool, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if m == nil {
+		return types.Int64Null(), false, diags
+	}
+	v, ok := m[key]
+	if !ok {
+		return types.Int64Null(), false, diags
+	}
+
+	switch value := v.(type) {
+	case int:
+		return types.Int64Value(int64(value)), true, diags
+	case int32:
+		return types.Int64Value(int64(value)), true, diags
+	case int64:
+		return types.Int64Value(value), true, diags
+	case float64:
+		if value > math.MaxInt64 || value < math.MinInt64 {
+			diags.Append(diag.NewWarningDiagnostic(
+				"Ignoring unsupported connection_delay value",
+				fmt.Sprintf("The value %v is out of int64 range, so policy advanced.agent.connection_delay is ignored.", value),
+			))
+			return types.Int64Null(), true, diags
+		}
+		if math.Trunc(value) != value {
+			diags.Append(diag.NewWarningDiagnostic(
+				"Ignoring unsupported connection_delay value",
+				fmt.Sprintf("The value %v is not a whole number, so policy advanced.agent.connection_delay is ignored.", value),
+			))
+			return types.Int64Null(), true, diags
+		}
+		return types.Int64Value(int64(value)), true, diags
+	default:
+		diags.Append(diag.NewWarningDiagnostic(
+			"Ignoring unsupported connection_delay value",
+			fmt.Sprintf("Expected a whole number for policy advanced.agent.connection_delay but got %T; value is ignored.", v),
+		))
+		return types.Int64Null(), true, diags
+	}
+}
+
+func isKnownObject(v types.Object) bool {
+	return !v.IsNull() && !v.IsUnknown()
+}
+
+func isKnownBool(v types.Bool) bool {
+	return !v.IsNull() && !v.IsUnknown()
+}
+
 // Helper to extract sub-map from a map.
 func getMap(m map[string]any, key string) map[string]any {
 	if m == nil {
@@ -331,6 +382,9 @@ func mapWindowsPolicyFromAPI(ctx context.Context, data map[string]any) (types.Ob
 		behProtObj = types.ObjectNull(behaviorProtectionAttrTypes())
 	}
 
+	advancedObj, d := mapWindowsAdvancedFromAPI(ctx, getMap(data, "advanced"))
+	diags.Append(d...)
+
 	popupData := getMap(data, "popup")
 	popupObj, d := mapWindowsPopupFromAPI(ctx, popupData)
 	diags.Append(d...)
@@ -389,6 +443,7 @@ func mapWindowsPolicyFromAPI(ctx context.Context, data map[string]any) (types.Ob
 		Ransomware:             ransomwareObj,
 		MemoryProtection:       memProtObj,
 		BehaviorProtection:     behProtObj,
+		Advanced:               advancedObj,
 		Popup:                  popupObj,
 		Logging:                loggingObj,
 		AntivirusRegistration:  avrObj,
@@ -504,6 +559,9 @@ func mapMacPolicyFromAPI(ctx context.Context, data map[string]any) (types.Object
 		behProtObj = types.ObjectNull(behaviorProtectionAttrTypes())
 	}
 
+	advancedObj, d := mapWindowsMacAdvancedFromAPI(ctx, getMap(data, "advanced"))
+	diags.Append(d...)
+
 	popupData := getMap(data, "popup")
 	popupObj, d := mapMacLinuxPopupFromAPI(ctx, popupData)
 	diags.Append(d...)
@@ -525,6 +583,7 @@ func mapMacPolicyFromAPI(ctx context.Context, data map[string]any) (types.Object
 		Malware:            malwareObj,
 		MemoryProtection:   memProtObj,
 		BehaviorProtection: behProtObj,
+		Advanced:           advancedObj,
 		Popup:              popupObj,
 		Logging:            loggingObj,
 	})
@@ -594,6 +653,9 @@ func mapLinuxPolicyFromAPI(ctx context.Context, data map[string]any) (types.Obje
 		behProtObj = types.ObjectNull(behaviorProtectionAttrTypes())
 	}
 
+	advancedObj, d := mapLinuxAdvancedFromAPI(ctx, getMap(data, "advanced"))
+	diags.Append(d...)
+
 	popupData := getMap(data, "popup")
 	popupObj, d := mapMacLinuxPopupFromAPI(ctx, popupData)
 	diags.Append(d...)
@@ -615,11 +677,139 @@ func mapLinuxPolicyFromAPI(ctx context.Context, data map[string]any) (types.Obje
 		Malware:            malwareObj,
 		MemoryProtection:   memProtObj,
 		BehaviorProtection: behProtObj,
+		Advanced:           advancedObj,
 		Popup:              popupObj,
 		Logging:            loggingObj,
 	})
 	diags.Append(d...)
 	return linuxObj, diags
+}
+
+func mapWindowsAdvancedFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(windowsMacAdvancedAttrTypes()), diags
+	}
+
+	agentObj, d := mapAdvancedAgentFromAPI(ctx, getMap(data, "agent"))
+	diags.Append(d...)
+	alertsObj, d := mapAdvancedAlertsCloudLookupFromAPI(ctx, getMap(data, "alerts"))
+	diags.Append(d...)
+	if !isKnownObject(agentObj) && !isKnownObject(alertsObj) {
+		return types.ObjectNull(windowsMacAdvancedAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, windowsMacAdvancedAttrTypes(), windowsMacAdvancedModel{
+		Agent:  agentObj,
+		Alerts: alertsObj,
+	})
+	diags.Append(d...)
+	return obj, diags
+}
+
+func mapWindowsMacAdvancedFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	return mapWindowsAdvancedFromAPI(ctx, data)
+}
+
+func mapLinuxAdvancedFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(linuxAdvancedAttrTypes()), diags
+	}
+
+	agentObj, d := mapAdvancedAgentFromAPI(ctx, getMap(data, "agent"))
+	diags.Append(d...)
+	alertsObj, d := mapAdvancedAlertsFromAPI(ctx, getMap(data, "alerts"))
+	diags.Append(d...)
+	if !isKnownObject(agentObj) && !isKnownObject(alertsObj) {
+		return types.ObjectNull(linuxAdvancedAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, linuxAdvancedAttrTypes(), linuxAdvancedModel{
+		Agent:  agentObj,
+		Alerts: alertsObj,
+	})
+	diags.Append(d...)
+	return obj, diags
+}
+
+func mapAdvancedAgentFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(advancedAgentAttrTypes()), diags
+	}
+
+	connectionDelay, exists, d := getConnectionDelay(data, "connection_delay")
+	diags.Append(d...)
+	if !exists || connectionDelay.IsNull() {
+		return types.ObjectNull(advancedAgentAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, advancedAgentAttrTypes(), advancedAgentModel{
+		ConnectionDelay: connectionDelay,
+	})
+	diags.Append(d...)
+	return obj, diags
+}
+
+func mapAdvancedAlertsFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(advancedAlertsAttrTypes()), diags
+	}
+
+	hashObj, d := mapAdvancedHashFromAPI(ctx, getMap(data, "hash"))
+	diags.Append(d...)
+	if !isKnownObject(hashObj) {
+		return types.ObjectNull(advancedAlertsAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, advancedAlertsAttrTypes(), advancedAlertsModel{
+		Hash: hashObj,
+	})
+	diags.Append(d...)
+	return obj, diags
+}
+
+func mapAdvancedAlertsCloudLookupFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(advancedAlertsCloudLookupAttrTypes()), diags
+	}
+
+	hashObj, d := mapAdvancedHashFromAPI(ctx, getMap(data, "hash"))
+	diags.Append(d...)
+	cloudLookup := getBool(data, "cloud_lookup")
+	if !isKnownObject(hashObj) && !isKnownBool(cloudLookup) {
+		return types.ObjectNull(advancedAlertsCloudLookupAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, advancedAlertsCloudLookupAttrTypes(), advancedAlertsCloudLookupModel{
+		Hash:        hashObj,
+		CloudLookup: cloudLookup,
+	})
+	diags.Append(d...)
+	return obj, diags
+}
+
+func mapAdvancedHashFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if len(data) == 0 {
+		return types.ObjectNull(advancedHashAttrTypes()), diags
+	}
+
+	md5 := getBool(data, "md5")
+	sha1 := getBool(data, "sha1")
+	if !isKnownBool(md5) && !isKnownBool(sha1) {
+		return types.ObjectNull(advancedHashAttrTypes()), diags
+	}
+
+	obj, d := types.ObjectValueFrom(ctx, advancedHashAttrTypes(), advancedHashModel{
+		MD5:  md5,
+		SHA1: sha1,
+	})
+	diags.Append(d...)
+	return obj, diags
 }
 
 func mapMacLinuxPopupFromAPI(ctx context.Context, data map[string]any) (types.Object, diag.Diagnostics) {
@@ -714,6 +904,46 @@ func malwareLinuxAttrTypes() map[string]attr.Type {
 	}
 }
 
+func advancedAgentAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"connection_delay": types.Int64Type,
+	}
+}
+
+func advancedHashAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"md5":  types.BoolType,
+		"sha1": types.BoolType,
+	}
+}
+
+func advancedAlertsAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"hash": types.ObjectType{AttrTypes: advancedHashAttrTypes()},
+	}
+}
+
+func advancedAlertsCloudLookupAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"hash":         types.ObjectType{AttrTypes: advancedHashAttrTypes()},
+		"cloud_lookup": types.BoolType,
+	}
+}
+
+func windowsMacAdvancedAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"agent":  types.ObjectType{AttrTypes: advancedAgentAttrTypes()},
+		"alerts": types.ObjectType{AttrTypes: advancedAlertsCloudLookupAttrTypes()},
+	}
+}
+
+func linuxAdvancedAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"agent":  types.ObjectType{AttrTypes: advancedAgentAttrTypes()},
+		"alerts": types.ObjectType{AttrTypes: advancedAlertsAttrTypes()},
+	}
+}
+
 func protectionModeAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"mode":      types.StringType,
@@ -778,6 +1008,7 @@ func windowsAttrTypes() map[string]attr.Type {
 		"ransomware":               types.ObjectType{AttrTypes: protectionModeAttrTypes()},
 		"memory_protection":        types.ObjectType{AttrTypes: protectionModeAttrTypes()},
 		"behavior_protection":      types.ObjectType{AttrTypes: behaviorProtectionAttrTypes()},
+		"advanced":                 types.ObjectType{AttrTypes: windowsMacAdvancedAttrTypes()},
 		"popup":                    types.ObjectType{AttrTypes: windowsPopupAttrTypes()},
 		"logging":                  types.ObjectType{AttrTypes: loggingAttrTypes()},
 		"antivirus_registration":   types.ObjectType{AttrTypes: antivirusRegistrationAttrTypes()},
@@ -791,6 +1022,7 @@ func macAttrTypes() map[string]attr.Type {
 		"malware":             types.ObjectType{AttrTypes: malwareFullAttrTypes()},
 		"memory_protection":   types.ObjectType{AttrTypes: protectionModeAttrTypes()},
 		"behavior_protection": types.ObjectType{AttrTypes: behaviorProtectionAttrTypes()},
+		"advanced":            types.ObjectType{AttrTypes: windowsMacAdvancedAttrTypes()},
 		"popup":               types.ObjectType{AttrTypes: macLinuxPopupAttrTypes()},
 		"logging":             types.ObjectType{AttrTypes: loggingAttrTypes()},
 	}
@@ -802,6 +1034,7 @@ func linuxAttrTypes() map[string]attr.Type {
 		"malware":             types.ObjectType{AttrTypes: malwareLinuxAttrTypes()},
 		"memory_protection":   types.ObjectType{AttrTypes: protectionModeAttrTypes()},
 		"behavior_protection": types.ObjectType{AttrTypes: behaviorProtectionAttrTypes()},
+		"advanced":            types.ObjectType{AttrTypes: linuxAdvancedAttrTypes()},
 		"popup":               types.ObjectType{AttrTypes: macLinuxPopupAttrTypes()},
 		"logging":             types.ObjectType{AttrTypes: loggingAttrTypes()},
 	}

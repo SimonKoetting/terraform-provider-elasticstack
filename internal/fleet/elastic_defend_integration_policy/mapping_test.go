@@ -539,3 +539,284 @@ func TestExtractPrivateStateFromResponse(t *testing.T) {
 		t.Error("expected ArtifactManifest to be non-nil")
 	}
 }
+
+func TestAdvancedPolicySettingsRoundTripInReadAndFinalize(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"windows": map[string]any{
+				"advanced": map[string]any{
+					"agent": map[string]any{
+						"connection_delay": 90,
+					},
+					"alerts": map[string]any{
+						"cloud_lookup": true,
+						"hash": map[string]any{
+							"md5":  true,
+							"sha1": false,
+						},
+					},
+				},
+			},
+			"mac": map[string]any{
+				"advanced": map[string]any{
+					"agent": map[string]any{
+						"connection_delay": 45,
+					},
+					"alerts": map[string]any{
+						"cloud_lookup": false,
+						"hash": map[string]any{
+							"md5":  false,
+							"sha1": true,
+						},
+					},
+				},
+			},
+			"linux": map[string]any{
+				"advanced": map[string]any{
+					"agent": map[string]any{
+						"connection_delay": 30,
+					},
+					"alerts": map[string]any{
+						"hash": map[string]any{
+							"md5":  true,
+							"sha1": true,
+						},
+					},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-advanced", "advanced-policy", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no diagnostics populating model, got %v", diags)
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no diagnostics building request, got %v", diags)
+	}
+	if req.Inputs == nil || len(*req.Inputs) != 1 {
+		t.Fatalf("expected one typed input, got %#v", req.Inputs)
+	}
+
+	input := (*req.Inputs)[0]
+	if input.Config == nil {
+		t.Fatal("expected finalize config to be present")
+	}
+	policyEntry, ok := (*input.Config)["policy"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected config.policy to be map, got %T", (*input.Config)["policy"])
+	}
+	policyValue, ok := policyEntry["value"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected config.policy.value to be map, got %T", policyEntry["value"])
+	}
+
+	windowsAdvanced := policyValue["windows"].(map[string]any)["advanced"].(map[string]any)
+	if windowsAdvanced["agent"].(map[string]any)["connection_delay"] != int64(90) {
+		t.Fatalf("expected windows advanced agent connection_delay 90, got %v", windowsAdvanced["agent"].(map[string]any)["connection_delay"])
+	}
+	if windowsAdvanced["alerts"].(map[string]any)["cloud_lookup"] != true {
+		t.Fatalf("expected windows advanced alerts cloud_lookup true, got %v", windowsAdvanced["alerts"].(map[string]any)["cloud_lookup"])
+	}
+
+	linuxAdvanced := policyValue["linux"].(map[string]any)["advanced"].(map[string]any)
+	if _, exists := linuxAdvanced["alerts"].(map[string]any)["cloud_lookup"]; exists {
+		t.Fatal("expected linux advanced alerts cloud_lookup to be absent")
+	}
+	if linuxAdvanced["agent"].(map[string]any)["connection_delay"] != int64(30) {
+		t.Fatalf("expected linux advanced agent connection_delay 30, got %v", linuxAdvanced["agent"].(map[string]any)["connection_delay"])
+	}
+}
+
+func TestAdvancedPolicyMappingOmitsEmptyAdvancedObjects(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"windows": map[string]any{
+				"events": map[string]any{
+					"process": true,
+				},
+				"advanced": map[string]any{
+					"agent":  map[string]any{},
+					"alerts": map[string]any{},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-empty-advanced", "empty-advanced", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	windows := policyValue["windows"].(map[string]any)
+	if _, exists := windows["advanced"]; exists {
+		t.Fatal("expected windows.advanced to be omitted when all modeled advanced children are empty")
+	}
+}
+
+func TestAdvancedConnectionDelayInvalidTypeWarnsAndOmits(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"windows": map[string]any{
+				"events": map[string]any{
+					"process": true,
+				},
+				"advanced": map[string]any{
+					"agent": map[string]any{
+						"connection_delay": "90s",
+					},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-invalid-advanced", "invalid-advanced", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+	if len(diags) == 0 || diags.HasError() {
+		t.Fatal("expected warning for unsupported connection_delay value type")
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	windows := policyValue["windows"].(map[string]any)
+	if advanced, exists := windows["advanced"]; exists {
+		agent, agentExists := advanced.(map[string]any)["agent"]
+		if agentExists {
+			if _, hasDelay := agent.(map[string]any)["connection_delay"]; hasDelay {
+				t.Fatal("expected invalid connection_delay to be omitted from payload")
+			}
+		}
+	}
+}
+
+func TestLinuxAdvancedCloudLookupIsSilentlyIgnoredAndNotRoundTripped(t *testing.T) {
+	ctx := context.Background()
+
+	endpointConfig := map[string]struct {
+		Frozen *bool   `json:"frozen,omitempty"`
+		Type   *string `json:"type,omitempty"`
+		Value  any     `json:"value"`
+	}{
+		"policy": buildConfigEntry(map[string]any{
+			"linux": map[string]any{
+				"advanced": map[string]any{
+					"alerts": map[string]any{
+						"cloud_lookup": true,
+						"hash": map[string]any{
+							"md5":  true,
+							"sha1": false,
+						},
+						"server_managed_only": "ignored",
+					},
+					"agent": map[string]any{
+						"connection_delay": 15,
+						"unknown_leaf":     "ignored",
+					},
+				},
+			},
+		}),
+	}
+	inputs := kbapi.PackagePolicyTypedInputs{
+		{
+			Type:    "endpoint",
+			Enabled: true,
+			Config:  &endpointConfig,
+			Streams: []kbapi.PackagePolicyTypedInputStream{},
+		},
+	}
+	policy := buildTestPackagePolicy("policy-linux-cloud", "linux-cloud", "endpoint", "8.14.0", true, inputs)
+
+	model := &edip.ElasticDefendIntegrationPolicyModel{}
+	diags := edip.PopulateModelFromAPI(ctx, model, policy)
+	if diags.HasError() {
+		t.Fatalf("expected no errors, got %v", diags)
+	}
+	if len(diags) > 0 {
+		t.Fatalf("expected no warnings for unsupported linux advanced alerts.cloud_lookup field, got %v", diags)
+	}
+
+	req, diags := edip.BuildFinalizeRequest(ctx, model, edip.DefendPrivateState{})
+	if diags.HasError() {
+		t.Fatalf("expected no errors building finalize request, got %v", diags)
+	}
+	input := (*req.Inputs)[0]
+	policyEntry := (*input.Config)["policy"].(map[string]any)
+	policyValue := policyEntry["value"].(map[string]any)
+	linux := policyValue["linux"].(map[string]any)
+	advanced := linux["advanced"].(map[string]any)
+	alerts := advanced["alerts"].(map[string]any)
+	if _, exists := alerts["cloud_lookup"]; exists {
+		t.Fatal("expected linux advanced alerts.cloud_lookup to be omitted from payload")
+	}
+	if _, exists := alerts["server_managed_only"]; exists {
+		t.Fatal("expected unmodeled linux advanced alerts field to be omitted from payload")
+	}
+	agent := advanced["agent"].(map[string]any)
+	if _, exists := agent["unknown_leaf"]; exists {
+		t.Fatal("expected unmodeled linux advanced agent field to be omitted from payload")
+	}
+}

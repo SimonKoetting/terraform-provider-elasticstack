@@ -19,6 +19,7 @@ package elasticdefendintegrationpolicy
 
 import (
 	providerschema "github.com/elastic/terraform-provider-elasticstack/internal/schema"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -321,6 +322,7 @@ func windowsPolicySchema() schema.Attribute {
 			"ransomware":          protectionModeSchema("Windows ransomware protection settings."),
 			"memory_protection":   protectionModeSchema("Windows memory protection settings."),
 			"behavior_protection": behaviorProtectionSchema("Windows behavior protection settings."),
+			"advanced":            windowsMacAdvancedSchema("Windows advanced policy settings."),
 			"popup": schema.SingleNestedAttribute{
 				Description: "Windows popup notification settings.",
 				Computed:    true,
@@ -445,6 +447,7 @@ func macPolicySchema() schema.Attribute {
 			},
 			"memory_protection":   protectionModeSchema("macOS memory protection settings."),
 			"behavior_protection": behaviorProtectionSchema("macOS behavior protection settings."),
+			"advanced":            windowsMacAdvancedSchema("macOS advanced policy settings."),
 			"popup": schema.SingleNestedAttribute{
 				Description: "macOS popup notification settings.",
 				Optional:    true,
@@ -521,6 +524,7 @@ func linuxPolicySchema() schema.Attribute {
 			},
 			"memory_protection":   protectionModeSchema("Linux memory protection settings."),
 			"behavior_protection": behaviorProtectionSchema("Linux behavior protection settings."),
+			"advanced":            linuxAdvancedSchema(),
 			"popup": schema.SingleNestedAttribute{
 				Description: "Linux popup notification settings.",
 				Optional:    true,
@@ -540,6 +544,77 @@ func linuxPolicySchema() schema.Attribute {
 						Validators: []validator.String{
 							stringvalidator.OneOf("info", "debug", "warning", "error", "critical"),
 						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func advancedAgentSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Advanced agent settings.",
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"connection_delay": schema.Int64Attribute{
+				Description: "Seconds to wait for endpoint-agent connectivity before first policy response.",
+				Optional:    true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
+			},
+		},
+	}
+}
+
+func advancedHashSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Hashing behavior for alerts.",
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"md5": schema.BoolAttribute{
+				Description: "Include MD5 hashes in alerts.",
+				Optional:    true,
+			},
+			"sha1": schema.BoolAttribute{
+				Description: "Include SHA-1 hashes in alerts.",
+				Optional:    true,
+			},
+		},
+	}
+}
+
+func linuxAdvancedSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: "Linux advanced policy settings.",
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"agent": advancedAgentSchema(),
+			"alerts": schema.SingleNestedAttribute{
+				Description: "Linux advanced alert settings.",
+				Optional:    true,
+				Attributes: map[string]schema.Attribute{
+					"hash": advancedHashSchema(),
+				},
+			},
+		},
+	}
+}
+
+func windowsMacAdvancedSchema(description string) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Description: description,
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"agent": advancedAgentSchema(),
+			"alerts": schema.SingleNestedAttribute{
+				Description: "Advanced alert settings.",
+				Optional:    true,
+				Attributes: map[string]schema.Attribute{
+					"hash": advancedHashSchema(),
+					"cloud_lookup": schema.BoolAttribute{
+						Description: "Use cloud lookup to reduce false positives before alerting.",
+						Optional:    true,
 					},
 				},
 			},
